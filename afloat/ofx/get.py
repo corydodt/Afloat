@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import time, os, httplib, urllib2
 import sys
-import getpass
+from getpass import getpass
 
 from twisted.python import usage
 
@@ -17,7 +17,7 @@ sites = {
 		}	
    }
 
-shortSites = { 'eecu': 'Education Employees C U'
+shortSites = { 'eecu': 'Educational Employees C U'
         }
 												
 def _field(tag,value):
@@ -73,16 +73,16 @@ class OFXClient:
 # this is from _ccreq below and reading page 176 of the latest OFX doc.
     def _bareq(self, acctid, dtstart, accttype):
     	config=self.config
-	req = _tag("STMTRQ",
-		   _tag("BANKACCTFROM",
-		   	_field("BANKID",sites [argv[1]] ["bankid"]),
-		        _field("ACCTID",acctid),
-			_field("ACCTTYPE",accttype)),
-		   _tag("INCTRAN",
-		   	_field("DTSTART",dtstart),
-			_field("INCLUDE","Y")))
-	return self._message("BANK","STMT",req)
-	
+        req = _tag("STMTRQ",
+               _tag("BANKACCTFROM",
+                _field("BANKID", config["bankid"]),
+                    _field("ACCTID",acctid),
+                _field("ACCTTYPE",accttype)),
+               _tag("INCTRAN",
+                _field("DTSTART",dtstart),
+                _field("INCLUDE","Y")))
+        return self._message("BANK","STMT",req)
+        
     def _ccreq(self, acctid, dtstart):
         config=self.config
         req = _tag("CCSTMTRQ",
@@ -183,7 +183,7 @@ get --listSites
 ___
 """
     optFlags = [['listSites', 'l', 'List all available bank sites']]
-    # optParameters = [[long, short, default, help], ...]
+    optParameters = [['out', 'o', 'Output filename']]
 
     def parseArgs(self, siteName=None, user=None, account=None, accountType=None):
         if self['listSites']:
@@ -195,9 +195,9 @@ ___
             raise usage.UsageError("Wrong number of arguments")
 
         self['siteName'] = siteName
-        if site in sites:
+        if siteName in sites:
             self['site'] = sites[siteName]
-        elif site in shortSites:
+        elif siteName in shortSites:
             self['site'] = sites[shortSites[siteName]]
         else:
             raise usage.UsageError("** That is not a site I know. Try --listSites")
@@ -215,23 +215,29 @@ ___
             return
 
         site = self['site']
+        siteName = self['siteName']
         account = self['account']
+        dtnow = time.strftime("%Y%m%d", time.localtime())
 
-        dtstart = time.strftime("%Y%m%d",time.localtime(time.time()-31*86400))
-        dtnow = time.strftime("%Y%m%d",time.localtime())
-        passwd = getpass.getpass(prompt="Bank Password for %s: " % (argv[2],))
+        dtstart = time.strftime("%Y%m%d", time.localtime(time.time()-31*86400))
+        self['outFilename'] = outFilename = fileNamer(siteName, dtnow)
+
+        passwd = getpass(prompt="Bank Password for %s: " % (self['user'],))
         client = OFXClient(site, self['user'], passwd)
         if account is None:
-           query = client.acctQuery("19700101000000")
-           client.doQuery(query, argv[1]+"_acct.ofx") 
+            query = client.acctQuery("19700101000000")
+            client.doQuery(query, siteName + "_acct.ofx") 
         else:
-           if "CCSTMT" in site["caps"]:
-              query = client.ccQuery(account, dtstart)
-           elif "INVSTMT" in site["caps"]:
-              query = client.invstQuery(site["fiorg"], account, dtstart)
-           elif "BASTMT" in site["caps"]:
-              query = client.baQuery(account, dtstart, self['accountType'])
-           client.doQuery(query, self['siteName'] + dtnow + ".ofx")
+            if "CCSTMT" in site["caps"]:
+                 query = client.ccQuery(account, dtstart)
+            elif "INVSTMT" in site["caps"]:
+                 query = client.invstQuery(site["fiorg"], account, dtstart)
+            elif "BASTMT" in site["caps"]:
+                 query = client.baQuery(account, dtstart, self['accountType'])
+            client.doQuery(query, outFilename)
+
+def fileNamer(siteName, date):
+    return siteName + date + '.ofx'
 
 def run(argv=None):
     if argv is None:
@@ -245,6 +251,22 @@ def run(argv=None):
         return 1
 
     return 0
+
+def optionsRun(argv=None):
+    """
+    Run the command, and return the options instead
+    """
+    if argv is None:
+        argv = sys.argv
+    o = Options()
+    try:
+        o.parseOptions(argv[1:])
+    except usage.UsageError, e:
+        print str(o)
+        print str(e)
+        return o
+
+    return o
 
 if __name__ == '__main__': sys.exit(run())
 

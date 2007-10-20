@@ -1,3 +1,8 @@
+# vi:ft=python
+import sys, os
+
+from twisted.python import usage
+
 import sgmllib
 
 class OFXParser(sgmllib.SGMLParser):
@@ -12,8 +17,8 @@ class OFXParser(sgmllib.SGMLParser):
     def start_ofx(self, attributes):
         self.start('ofx')
 
-    def start_signonmsgsrv1(self, attributes):
-        self.start('signonmsgsrv1')
+    def start_signonmsgsrsv1(self, attributes):
+        self.start('signonmsgsrsv1')
 
     def start_signupmsgsrsv1(self, attributes):
         self.start('signupmsgsrsv1')
@@ -41,17 +46,39 @@ class OFXParser(sgmllib.SGMLParser):
         last = ''
         ss = self.stateStack[:]
         while last != tagName and len(ss):
-            last = self.stateStack.pop(-1)
+            last = ss.pop(-1)
 
         if last != tagName:
             raise sgmllib.SGMLParseError(tagName + " ended before it began!")
 
         self.stateStack[:] = ss[:]
 
+class Options(usage.Options):
+    synopsis = "parse ofxfile"
+    # optParameters = [[long, short, default, help], ...]
 
-p = OFXParser()
+    def parseArgs(self, ofxFile):
+        self['ofxFile'] = ofxFile
 
-p.feed(open('Educational Employees C U20071018.ofx').read())
+    def postOptions(self):
+        p = OFXParser()
+
+        p.feed(open(self['ofxFile']).read())
+
+def run(argv=None):
+    if argv is None:
+        argv = sys.argv
+    o = Options()
+    try:
+        o.parseOptions(argv[1:])
+    except usage.UsageError, e:
+        print str(o)
+        print str(e)
+        return 1
+
+    return 0
+
+if __name__ == '__main__': sys.exit(run())
 
 containers = """
 """
