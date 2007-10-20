@@ -1,5 +1,5 @@
 # vi:ft=python
-import sys, os
+import sys
 
 from twisted.python import usage
 

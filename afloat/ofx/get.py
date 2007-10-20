@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import time, os, httplib, urllib2
+import time, os, urllib2
 import sys
 from getpass import getpass
 
