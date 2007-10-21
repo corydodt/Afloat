@@ -1,0 +1,129 @@
+*ofx
+
+    # signon messages
+    *signonmsgsrsv1  # signon messages rowset v1
+        *sonrs         # signon rowset
+            *status
+                code
+                severity
+                message
+  
+            dtserver  # server date (now)
+            language
+            dtprofup  # date profile was last updated
+            dtacctup  # date (any?) account was last updated
+  
+            *fi        # financial institution
+                org     # (Educational Employees C U)
+                fid     # financial id - routing number
+  
+            users.type
+            users.primacn  # primary account number
+            intu.bid       # internal use? bank id
+            intu.userid    # internal use? user id
+            users.dtlastlogin  # date of last login
+
+
+    *signupmsgsrsv1  # signup(?) messages rowset v1
+        *acctinfotrnsrs  # account info transaction rowset
+            trnuid      # transaction unique id - for this request, i think
+            *status
+                code
+                severity
+                message
+            cltcookie   # client cookie (number)
+
+            *acctinfors  # account info rowset
+                dtacctup    # date (any?) account was last updated
+                *acctinfo
+                    desc
+                    phone
+                    users.acctnickname  # accout nickname
+                    users.stmtdesc      # statement description
+                    *bankacctinfo    # bank account info
+                        *bankacctfrom    # bank account "from" - account id?
+                            bankid      # bank id i.e. routing number
+                            acctid      # account id, with =0 or =8
+                            accttype    # account type (savings, checking)
+                        suptxdl     # bool ??? - support xdl? tax? ...
+                        xfersrc     # bool transfer source - can i be xfrd from
+                        xferdest    # bool transfer dest - can i be xfrd into
+                        svcstatus   # service status e.g. active
+                        *users.bankinfo
+                            *ledgerbal   # ledger balance
+                                balamt  # balance amount
+                                dtasof  # as of this date
+
+                            *availbal    # available balance
+                                balamt  # balance amount
+                                dtasof  # as of this date
+
+                            label
+                            shareclass  # S (?? savings) or SD - share draft?
+                            sdacn       # share draft account number (i.e on
+                                        #   checks - but missing last digit ??)
+                            micr        # m-something check register? this is the
+                                        #   full number on the checks
+                            dthistavail # date history is available -- oldest txn?
+
+                            *odpacct     # no idea, comes empty with a closing tag
+                                .. 
+
+                            iraflg      # bool IRA flag 
+
+                            *hold
+                                type
+                                subtype
+                                desc
+                                dtapplied   # date applied
+                                dtreleased  # date released
+                                amt         # amount
+
+                            regd        # bool regulation D, does it apply
+                            regdcnt     # regulation D transfers today
+                            regdmax     # regulation D maximum xfrs
+                            edpdeposit  # bool edp?? deposit
+
+                            cpaylimit   # 500? maybe atm cash limit?
+
+                users.businessdate  # today's date, i guess
+    *bankmsgsrsv1    # bank messages rowset v1
+        *stmtrnsrs   # statement transaction rowset
+            trnuid      # transaction unique id - for this request, i think
+            cltcookie   # client cookie (number)
+
+            *stmtrs      # statement rowset
+                curdef  # currency definition (USD)
+                *bankacctfrom    # bank account "from" - account id?
+                    bankid      # bank id i.e. routing number
+                    acctid      # account id, with =0 or =8
+                    accttype    # account type (savings, checking)
+                *banktranlist
+                    dtstart     # start date (all transactions)
+                    dtend       # end date (all)
+
+                    *stmttrn     # statement transaction
+                        trntype # transaction type (DEBIT, DEP  .. POSW, ATM,
+                                #   DRAFTWDL (checks), DRAFTDEP (checks
+                                #   deposited at ATM), ACHDEP (direct
+                                #   deposit), DIV, WDL - used for dividend
+                                #   adjustments by the bank)
+                        dtposted    # date posted
+                        dtuser      # date user.. date it was seen in the
+                                    # ledger?
+                        trnamt      # transaction amount
+                        fitid       # financial instituion txn id.. 5digits,5digits
+                        memo        # includes trace number
+                        name
+                        checknum    # check number
+                        *users.stmt  # ..
+                            trnbal  # transaction balance (ledger)
+                            tracenumber
+                            hyperlink   # boolean - whether we can click to
+                                        # see the check
+                *ledgerbal
+                    balamt
+                    dtasof
+                *availbal
+                    balamt
+                    dtasof
