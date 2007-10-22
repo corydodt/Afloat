@@ -1,180 +1,27 @@
 #!/usr/bin/python
-import time, os, urllib2
-import sys
+import sys, os
+import shlex
 from getpass import getpass
 
-from twisted.python import usage
+from twisted.python import usage, procutils
+from twisted.internet import reactor, utils
 
 join = str.join
 
-sites = {
-		"Educational Employees C U": {
-            "caps": [ "SIGNON", "BASTMT" ],
-			"fid": "321172594",     # ^- this is what i added, for checking/savings/debit accounts- think "bank statement"
-			"fiorg": "Educational Employees C U",
-			"url": "https://www.eecuonline.org/scripts/isaofx.dll",
-			"bankid": "321172594", # bank routing #
-		}	
-   }
+ACCOUNT_CHECKING = 1
+ACCOUNT_INVEST = 2
+ACCOUNT_CREDIT = 3
 
-shortSites = { 'eecu': 'Educational Employees C U'
-        }
-												
-def _field(tag,value):
-    return "<"+tag+">"+value
-
-def _tag(tag,*contents):
-    return join("\r\n",["<"+tag+">"]+list(contents)+["</"+tag+">"])
-
-def _date():
-    return time.strftime("%Y%m%d%H%M%S",time.localtime())
-
-def _genuuid():
-    return os.popen("uuidgen").read().rstrip().upper()
-
-class OFXClient:
-    """Encapsulate an ofx client, config is a dict containg configuration"""
-    def __init__(self, config, user, password):
-        self.password = password
-        self.user = user
-        self.config = config
-        self.cookie = 3
-        config["user"] = user
-        config["password"] = password
-        if not config.has_key("appid"):
-            config["appid"] = "QWIN"  # i've had to fake Quicken to actually get my unwilling test server to talk to me
-            config["appver"] = "1200"
-
-    def _cookie(self):
-        self.cookie += 1
-        return str(self.cookie)
-
-    """Generate signon message"""
-    def _signOn(self):
-        config = self.config
-        fidata = [ _field("ORG",config["fiorg"]) ]
-        if config.has_key("fid"):
-            fidata += [ _field("FID",config["fid"]) ]
-        return _tag("SIGNONMSGSRQV1",
-                    _tag("SONRQ",
-                         _field("DTCLIENT",_date()),
-                         _field("USERID",config["user"]),
-                         _field("USERPASS",config["password"]),
-                         _field("LANGUAGE","ENG"),
-                         _tag("FI", *fidata),
-                         _field("APPID",config["appid"]),
-                         _field("APPVER",config["appver"]),
-                         ))
-
-    def _acctreq(self, dtstart):
-        req = _tag("ACCTINFORQ",_field("DTACCTUP",dtstart))
-        return self._message("SIGNUP","ACCTINFO",req)
-
-# this is from _ccreq below and reading page 176 of the latest OFX doc.
-    def _bareq(self, acctid, dtstart, accttype):
-    	config=self.config
-        req = _tag("STMTRQ",
-               _tag("BANKACCTFROM",
-                _field("BANKID", config["bankid"]),
-                    _field("ACCTID",acctid),
-                _field("ACCTTYPE",accttype)),
-               _tag("INCTRAN",
-                _field("DTSTART",dtstart),
-                _field("INCLUDE","Y")))
-        return self._message("BANK","STMT",req)
-        
-    def _ccreq(self, acctid, dtstart):
-        config=self.config
-        req = _tag("CCSTMTRQ",
-                   _tag("CCACCTFROM",_field("ACCTID",acctid)),
-                   _tag("INCTRAN",
-                        _field("DTSTART",dtstart),
-                        _field("INCLUDE","Y")))
-        return self._message("CREDITCARD","CCSTMT",req)
-
-    def _invstreq(self, brokerid, acctid, dtstart):
-        dtnow = time.strftime("%Y%m%d%H%M%S",time.localtime())
-        req = _tag("INVSTMTRQ",
-                   _tag("INVACCTFROM",
-                      _field("BROKERID", brokerid),
-                      _field("ACCTID",acctid)),
-                   _tag("INCTRAN",
-                        _field("DTSTART",dtstart),
-                        _field("INCLUDE","Y")),
-                   _field("INCOO","Y"),
-                   _tag("INCPOS",
-                        _field("DTASOF", dtnow),
-                        _field("INCLUDE","Y")),
-                   _field("INCBAL","Y"))
-        return self._message("INVSTMT","INVSTMT",req)
-
-    def _message(self,msgType,trnType,request):
-        config = self.config
-        return _tag(msgType+"MSGSRQV1",
-                    _tag(trnType+"TRNRQ",
-                         _field("TRNUID",_genuuid()),
-                         _field("CLTCOOKIE",self._cookie()),
-                         request))
-    
-    def _header(self):
-        return join("\r\n",[ "OFXHEADER:100",
-                           "DATA:OFXSGML",
-                           "VERSION:102",
-                           "SECURITY:NONE",
-                           "ENCODING:USASCII",
-                           "CHARSET:1252",
-                           "COMPRESSION:NONE",
-                           "OLDFILEUID:NONE",
-                           "NEWFILEUID:"+_genuuid(),
-                           ""])
-
-    def baQuery(self, acctid, dtstart, accttype):
-    	"""Bank account statement request"""
-        return join("\r\n",[self._header(),
- 	                  _tag("OFX",
-                                self._signOn(),
-                                self._bareq(acctid, dtstart, accttype))])
-						
-    def ccQuery(self, acctid, dtstart):
-        """CC Statement request"""
-        return join("\r\n",[self._header(),
-                          _tag("OFX",
-                               self._signOn(),
-                               self._ccreq(acctid, dtstart))])
-
-    def acctQuery(self,dtstart):
-        return join("\r\n",[self._header(),
-                          _tag("OFX",
-                               self._signOn(),
-                               self._acctreq(dtstart))])
-
-    def invstQuery(self, brokerid, acctid, dtstart):
-        return join("\r\n",[self._header(),
-                          _tag("OFX",
-                               self._signOn(),
-                               self._invstreq(brokerid, acctid,dtstart))])
-
-    def doQuery(self,query,name):
-        # N.B. urllib doesn't honor user Content-type, use urllib2
-        request = urllib2.Request(self.config["url"],
-                                  query,
-                                  { "Content-type": "application/x-ofx",
-                                    "Accept": "*/*, application/x-ofx"
-                                  })
-        if 1:
-            f = urllib2.urlopen(request)
-            response = f.read()
-            f.close()
-            
-            f = file(name,"w")
-            f.write(response)
-            f.close()
-	else:
-            print request
-            print self.config["url"], query
-        
-        # ...
-
+def getProcessOutputUtil(commandLine):
+    """
+    Convenience wrapper around getProcessOutput
+    """
+    print commandLine
+    argv = shlex.split(commandLine)
+    executable = procutils.which(argv[0])[0]
+    rest = argv[1:]
+    env = os.environ
+    return utils.getProcessOutput(executable, rest, env, errortoo=True)
 
 class Options(usage.Options):
     synopsis = """get site user [account] [CHECKING/SAVINGS/.. if using BASTMT]
@@ -189,55 +36,85 @@ ___
         if self['listSites']:
             return
 
-        # manually check that siteName and user were supplied, so we can have
+        # manually check that args were supplied, so we can have
         # the special listSites behavior without causing a UsageError.
-        if None in (siteName, user):
-            raise usage.UsageError("Wrong number of arguments")
+        if None in (siteName, user, account, accountType):
+            raise usage.UsageError("Wrong number of arguments :(")
 
         self['siteName'] = siteName
-        if siteName in sites:
-            self['site'] = sites[siteName]
-        elif siteName in shortSites:
-            self['site'] = sites[shortSites[siteName]]
-        else:
-            raise usage.UsageError("** That is not a site I know. Try --listSites")
-
         self['user'] = user
         self['account'] = account
         self['accountType'] = accountType
 
     def opt_listSites(self):
-        print "AVAILABLE SITES:\n", join("\n", ('\t'.join(i) for i in shortSites.items()))
+        joined = join("\n", ['\t'.join(i) for i in shortSites.items()])
+        print "AVAILABLE SITES:\n", joined
         self['listSites'] = True
 
     def postOptions(self):
         if self['listSites']:
             return
 
-        site = self['site']
-        siteName = self['siteName']
-        account = self['account']
-        dtnow = time.strftime("%Y%m%d", time.localtime())
-
-        dtstart = time.strftime("%Y%m%d", time.localtime(time.time()-31*86400))
-        self['outFilename'] = outFilename = fileNamer(siteName, dtnow)
-
-        passwd = getpass(prompt="Bank Password for %s: " % (self['user'],))
-        client = OFXClient(site, self['user'], passwd)
-        if account is None:
-            query = client.acctQuery("19700101000000")
-            client.doQuery(query, siteName + "_acct.ofx") 
+        import afloat.ofx.get
+        siteClass = getattr(afloat.ofx.get, self['siteName'], None)
+        if siteClass is not None:
+            self['site'] = siteClass
         else:
-            if "CCSTMT" in site["caps"]:
-                 query = client.ccQuery(account, dtstart)
-            elif "INVSTMT" in site["caps"]:
-                 query = client.invstQuery(site["fiorg"], account, dtstart)
-            elif "BASTMT" in site["caps"]:
-                 query = client.baQuery(account, dtstart, self['accountType'])
-            client.doQuery(query, outFilename)
+            raise usage.UsageError(
+                    "** That is not a site I know. Try --listSites")
 
-def fileNamer(siteName, date):
-    return siteName + date + '.ofx'
+        
+        d = self.doGetting()
+        d.addBoth(lambda _: reactor.stop())
+
+        reactor.run()
+
+    def doGetting(self):
+        site = self['site']
+        account = self['account']
+        acType = self['accountType']
+        user = self['user']
+
+        passwd = getpass(prompt="Password (%s at %s): " % (user, site.org))
+
+        command1 = accountInfoCommand(self['user'], passwd, site)
+        d1 = getProcessOutputUtil(command1)
+
+        command2 = statementCommand(self['user'], passwd, site, account, acType)
+        d1.addCallback(lambda _: getProcessOutputUtil(command2))
+
+        return d1
+
+
+
+class EECU(object):
+    fid = "321172594"
+    bank = "321172594"
+    url = "https://www.eecuonline.org/scripts/isaofx.dll"
+    org = "Educational Employees C U"
+    
+
+def accountInfoCommand(user, password, bank):
+    c = '''ofxconnect -a --user=%(user)s --pass="%(pass)s" --fid=%(fid)s 
+        --bank=%(bank)s --org="%(org)s" --url=%(url)s
+        account.ofx'''
+    d = bank.__dict__.copy()
+    d.update( {'user': user, 'pass': password,} )
+    c = c % d
+    return c
+
+
+def statementCommand(user, password, bank, account, accountType):
+    c = '''ofxconnect -s --user=%(user)s --pass="%(pass)s" --fid=%(fid)s 
+        --bank=%(bank)s --org="%(org)s" --acct=%(account)s 
+        --type=%(accountType)s --past=30 --url=%(url)s
+        statement.ofx'''
+    d = bank.__dict__.copy()
+    d.update( {'user': user, 'pass': password, 'account': account,
+        'accountType': accountType})
+    c = c % d
+    return c
+
 
 def run(argv=None):
     if argv is None:
