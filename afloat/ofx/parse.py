@@ -40,6 +40,12 @@ class OFXParser(sgmllib.SGMLParser):
         tag = tag.replace('.', '_')
         return sgmllib.SGMLParser.finish_starttag(self, tag, attrs)
 
+    def finish_endtag(self, tag, ):
+        """
+        In my subclass, replace "." with "_" in tagnames
+        """
+        tag = tag.replace('.', '_')
+        return sgmllib.SGMLParser.finish_endtag(self, tag, )
 
     def __init__(self, *a, **kw):
         sgmllib.SGMLParser.__init__(self, *a, **kw)
@@ -348,7 +354,7 @@ class OFXParser(sgmllib.SGMLParser):
         self.end('bankacctfrom')
 
     def end_users_bankinfo(self, ):
-        self.end('users_bankinfo')
+        self.end('users.bankinfo')
 
     def end_odpacct(self, ):
         self.end('odpacct')
