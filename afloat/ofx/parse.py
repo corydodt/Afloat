@@ -213,9 +213,6 @@ class OFXParser(sgmllib.SGMLParser):
     def start_stmtrnsrs(self, attributes):
         self.start("stmtrnsrs")
 
-    def start_cltcookie(self, attributes):
-        self.start("cltcookie")
-
     def start_stmtrs(self, attributes):
         self.start("stmtrs")
 
@@ -260,9 +257,6 @@ class OFXParser(sgmllib.SGMLParser):
 
     def start_dtserver(self, attributes):
         self.start('dtserver')
-
-    def start_fid(self, attributes):
-        self.start('fid')
 
     def start_users_primacn(self, attributes): # argh
         self.start('users.primacn')
@@ -332,9 +326,6 @@ class OFXParser(sgmllib.SGMLParser):
     def end_sonrs(self, ):
         self.end('sonrs')
 
-    def end_status(self, ):
-        self.end('status')
-
     def end_fi(self, ):
         self.end('fi')
 
@@ -359,12 +350,6 @@ class OFXParser(sgmllib.SGMLParser):
     def end_users_bankinfo(self, ):
         self.end('users_bankinfo')
 
-    def end_ledgerbal(self, ):
-        self.end('ledgerbal')
-
-    def end_availbal(self, ):
-        self.end('availbal')
-
     def end_odpacct(self, ):
         self.end('odpacct')
 
@@ -376,9 +361,6 @@ class OFXParser(sgmllib.SGMLParser):
 
     def end_stmtrs(self, ):
         self.end('stmtrs')
-
-    def end_bankacctfrom(self, ):
-        self.end('bankacctfrom')
 
     def end_banktranlist(self, ):
         self.end('banktranlist')
