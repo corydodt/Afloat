@@ -6,31 +6,64 @@ from twisted.python import usage
 import sgmllib
 
 
+class Banking(object):
+    """
+    Your set of accounts, and the server date of the calls we made
+    """
+    def __init__(self):
+        self.accounts = {}
+
+    def addAccount(self, account):
+        self.accounts[account.id] = account
+
+    def getAccount(self, id):
+        return self.accounts[id]
+
+
+class Account(object):
+    """
+    A single account, with all your transactions
+    """
+    def __init__(self):
+        self.transactions = {}
+
+    def addTransaction(self, txn):
+        self.transactions[txn.id] = txn
+
+
+class Transaction(object):
+    """
+    One transaction (date, memo, checknum, amount)
+    """
+    def __init__(self):
+        pass
+
+
 class OFXParser(sgmllib.SGMLParser):
     """
     Get financials out.  We need (from signon, acctlist, bankstmt):
-       /ofx/signonmsgsrsv1/dtserver
-                          /fi/fid (to verify)
-                          /users.primacn (to verify)
-           /signupmsgsrsv1/acctinfors/acctinfo/bankacctinfo/bankacctfrom/acctid (all available, key)
-                                                           /users.bankinfo/ledgerbal/balamt (all by acctid)
-                                                                          /availbal/balamt (all by acctid)
-                                                                          /hold/dtapplied (all by acctid, key)
-                                                                          /hold/desc  (all by acctid by dtapplied)
-                                                                          /hold/amt  (all by acctid by dtapplied)
-                                                                          /regdcnt (all by accountid)
-                                                                          /regdmax (all by accountid)
-           /bankmsgsrsv1/stmtrnsrs/stmtrs/bankacctfrom/acctid (to verify)
-                                         /banktranlist/stmttrn/fitid (all available, key)
-                                                              /trntype
-                                                              /trnamt
-                                                              /dtposted
-                                                              /dtuser
-                                                              /memo
-                                                              /checknum
-                                                              /users.stmt/trnbal (to verify)
-                                         /ledgerbal/balamt (assert against signup ledgerbal)
-                                         /availbal/balamt (assert against signup ledgerbal)
+X      /ofx/signonmsgsrsv1/dtserver
+X                         /fi/fid (to verify)
+X                         /users.primacn (to verify)
+X          /signupmsgsrsv1/acctinfors/acctinfo/bankacctinfo/bankacctfrom/acctid (all available, key)
+_                                                          /users.bankinfo/ledgerbal/balamt (all by acctid)
+_                                                                         /availbal/balamt (all by acctid)
+_                                                                         /hold/dtapplied (all by acctid, key)
+_                                                                              /desc  (all by acctid by dtapplied)
+_                                                                              /amt  (all by acctid by dtapplied)
+_                                                                         /regdcnt (all by accountid)
+_                                                                         /regdmax (all by accountid)
+X          /bankmsgsrsv1/stmtrnsrs/stmtrs/bankacctfrom/acctid (to verify)
+X                                        /banktranlist/stmttrn/fitid (all available, key)
+_                                                             /trntype
+_                                                             /trnamt
+_                                                             /dtposted
+_                                                             /dtuser
+_                                                             /memo
+_                                                             /checknum
+_                                                             /users.stmt/trnbal (to verify)
+_                                        /ledgerbal/balamt (assert against signup ledgerbal)
+_                                        /availbal/balamt (assert against signup ledgerbal)
     """
 
     def finish_starttag(self, tag, attrs):
@@ -49,22 +82,18 @@ class OFXParser(sgmllib.SGMLParser):
 
     def __init__(self, *a, **kw):
         sgmllib.SGMLParser.__init__(self, *a, **kw)
-        self.data = []
-        self.stateStack = []
-        accounts = {}
+        self._data = []
+        self._stateStack = []
+        self.banking = Banking()
         self.inData = 0
+        self.currentAccount = None
+        self.currentTransaction = None
 
     def handle_data(self, data):
-        # all container tags seem to contain no data of their own, and all
-        # non-container tags do contain data.  so if i found any data, 
-        # that means i just closed the last tag.
         data = data.strip()
-        if data and len(self.stateStack) > 0:
-            if not self.inData: # we just closed and started a tag
-                self.end(self.stateStack[-1])
-
+        if data:
             self.inData = True
-            self.data.append(data)
+            self._data.append(data)
 
     def start_sonrs(self, attributes):
         self.start("sonrs")
@@ -186,8 +215,8 @@ class OFXParser(sgmllib.SGMLParser):
     def start_dthistavail(self, attributes):
         self.start("dthistavail")
 
-    def start_odpacct(self, attributes):
-        self.start("odpacct")
+    def start_odpact(self, attributes):
+        self.start("odpact")
 
     def start_iraflg(self, attributes):
         self.start("iraflg")
@@ -216,8 +245,8 @@ class OFXParser(sgmllib.SGMLParser):
     def start_users_businessdate(self, attributes):
         self.start("users.businessdate")
 
-    def start_stmtrnsrs(self, attributes):
-        self.start("stmtrnsrs")
+    def start_stmttrnrs(self, attributes):
+        self.start("stmttrnrs")
 
     def start_stmtrs(self, attributes):
         self.start("stmtrs")
@@ -313,12 +342,23 @@ class OFXParser(sgmllib.SGMLParser):
         self.start("trnbal")
 
     def start(self, tag):
+        # this is somewhat fishy.  "inData" means the last thing we saw was
+        # data.  If we've just seen data, then the last tag was NOT A
+        # CONTAINER, because OFX doesn't have any data tags that are also
+        # containers.  If the last tag was NOT A CONTAINER, it should close
+        # now. 
+        if self.inData and self._stateStack:
+            self.end(self._stateStack[-1])
         self.inData = False
-        self.stateStack.append(tag)
-        print '  ' * (len(self.stateStack)-1), tag
+        self._stateStack.append(tag)
+        print '  ' * (len(self._stateStack)-1), tag
 
     def end_ofx(self, ):
         self.end('ofx')
+        for account in self.banking.accounts.values():
+            print 'account #', account.id
+            for txn in account.transactions.values():
+                print 'transaction #', txn.id
 
     def end_signonmsgsrsv1(self, ):
         self.end('signonmsgsrsv1')
@@ -383,34 +423,88 @@ class OFXParser(sgmllib.SGMLParser):
     def end_availbal(self, ):
         self.end('availbal')
 
+    def dataUnknown(self, tagName, data, stack):
+        pass 
+        # print tagName, data
+
+    def data_fid(self, tagName, data, stack):
+        print 'server bank fid: %s' % (data,)
+        self.banking.fid = data
+
+    def data_dtserver(self, tagName, data, stack):
+        print 'server date: %s' % (data,)
+        self.banking.dtserver = data
+
+    def data_users_primacn(self, tagName, data, stack):
+        print 'users.primacn: %s' % (data,)
+        self.banking.primaryAccount = data
+
+    def data_message(self, tagName, data, stack):
+        assert 0, "message should have some data in it"
+        print 'message: ', data
+
+    def data_fitid(self, tagName, data, stack):
+        txn  = Transaction()
+        txn.id = data
+        ## self.currentAccount.addTransaction(txn)
+
+    def data_acctid(self, tagName, data, stack):
+        if stack[-6:] == ['signupmsgsrsv1', 'acctinfotrnrs', 'acctinfors',
+                'acctinfo', 'bankacctinfo', 'bankacctfrom', 'acctid']:
+            account = Account()
+            account.id = data
+            self.banking.addAccount(account)
+            return
+        if stack[-4:] == ['bankmsgsrsv1', 'stmttrnrs', 'stmtrs',
+                'bankacctfrom', 'acctid']:
+            self.currentAccount = self.banking.getAccount(data)
+            return
+
     def end(self, tagName):
-        # print ''.join(self.data)
-        self.data = []
-
+        # clean up the tag stack first, closing inner tags depth-first
         last = ''
-        ss = self.stateStack[:]
-        while last != tagName and len(ss):
-            last = ss.pop(-1)
+        ss = self._stateStack[::-1]
+        for n, stackTag in enumerate(ss):
+            if stackTag != tagName:
+                getattr(self, 'end_%s' % (stackTag,), lambda:None)()
+                self.end(last)
+            else:
+                break
 
-        if last != tagName:
+        if stackTag != tagName:
             raise sgmllib.SGMLParseError(tagName + " ended before it began!")
 
-        print '  ' * (len(ss)), '/' + last
+        self.finalizeTagData(
+        
+        print '  ' * (len(ss)), '/' + tagName
 
-        self.stateStack[:] = ss[:]
+        self._stateStack[:] = list(reversed(ss[n:]))
+
+    def finalizeTagData(self, tagName):
+        self.inData = False
+
+        tnUnderscores = tagName.replace('.', '_')
+        dataHandler = getattr(self, 'data_%s' % (tnUnderscores,), self.dataUnknown)
+        data = ''.join(self._data)
+        dataHandler(tnUnderscores, data, self._stateStack[:])
+
+        self._data = []
+
 
 
 class Options(usage.Options):
-    synopsis = "parse ofxfile"
+    synopsis = "parse directory"
     # optParameters = [[long, short, default, help], ...]
 
-    def parseArgs(self, ofxFile):
-        self['ofxFile'] = ofxFile
+    def parseArgs(self, directory):
+        self['directory'] = directory
 
     def postOptions(self):
         p = OFXParser()
-
-        p.feed(open(self['ofxFile']).read())
+        d = self['directory']
+        for ofx in ['%s/%s.ofx' % (d,x) for x in 'account', 'statement']:
+            doc = open(ofx).read()
+            p.feed(doc)
 
 
 def run(argv=None):
@@ -428,6 +522,3 @@ def run(argv=None):
 
 
 if __name__ == '__main__': sys.exit(run())
-
-containers = """
-"""
