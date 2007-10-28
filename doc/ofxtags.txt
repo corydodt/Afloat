@@ -66,7 +66,7 @@
                                         #   full number on the checks
                             dthistavail # date history is available -- oldest txn?
 
-                            *odpacct     # no idea, comes empty with a closing tag
+                            *odpact     # no idea, comes empty with a closing tag
                                 .. 
 
                             iraflg      # bool IRA flag 
