@@ -1,4 +1,5 @@
 ^gdata\.py-.*
 ^twistd.pid$
+^afloat/afloat.db$
 ^.*/dropin.cache$
 .*\.pyc$
