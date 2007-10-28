@@ -1,2 +1,4 @@
 ^gdata\.py-.*
+^twistd.pid$
+^.*/dropin.cache$
 .*\.pyc$
