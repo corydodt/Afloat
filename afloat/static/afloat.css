@@ -1,0 +1,23 @@
+@import url(reset.css);
+
+body { margin: 1em;
+    font-family: sans-serif;
+    background-color: #fffdca;
+}
+
+.graph {
+    width: 600px;
+    height: 400px;
+    border: 2px solid black;
+}
+
+.scheduler
+{
+    margin: 1em;
+}
+
+.summary
+{
+    margin: 1em;
+}
+
