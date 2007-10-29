@@ -79,14 +79,34 @@ ___
 
         passwd = getpass(prompt="Password (%s at %s): " % (user, site.org))
 
-        command1 = accountInfoCommand(self['user'], passwd, site, self['outdir'])
+        command1 = _deprecatedAccountInfoCommand(self['user'], passwd, site, self['outdir'])
         d1 = getProcessOutputUtil(command1)
 
-        command2 = statementCommand(self['user'], passwd, site, self['outdir'],
+        command2 = _deprecatedStatementCommand(self['user'], passwd, site, self['outdir'],
                 account, acType)
         d1.addCallback(lambda _: getProcessOutputUtil(command2))
 
         return d1
+
+
+def statementRequest(**kw):
+    c = '''ofxconnect -s --user=%(user)s --pass="%(password)s" --fid=%(fid)s 
+        --bank=%(bank)s --org="%(org)s" --acct=%(account)s 
+        --type=%(accountType)s --past=30 --url=%(url)s
+        %%s/statement_%(user)s_%(account)s.ofx'''
+    command = c % kw
+    def doRequest(outdir, cmd=command):
+        return getProcessOutputUtil(cmd % (outdir,))
+    return doRequest
+
+def accountInfoRequest(**kw):
+    c = '''ofxconnect -a --user=%(user)s --pass="%(password)s" --fid=%(fid)s 
+        --bank=%(bank)s --org="%(org)s" --url=%(url)s
+        "%%s"/account_%(user)s.ofx'''
+    command = c % kw
+    def doRequest(outdir, cmd=command):
+        return getProcessOutputUtil(cmd % (outdir,))
+    return doRequest
 
 
 class EECU(object):
@@ -96,7 +116,7 @@ class EECU(object):
     org = "Educational Employees C U"
     
 
-def accountInfoCommand(user, password, bank, outdir):
+def _deprecatedAccountInfoCommand(user, password, bank, outdir):
     c = '''ofxconnect -a --user=%(user)s --pass="%(pass)s" --fid=%(fid)s 
         --bank=%(bank)s --org="%(org)s" --url=%(url)s
         "%(outdir)s"/account.ofx'''
@@ -106,7 +126,7 @@ def accountInfoCommand(user, password, bank, outdir):
     return c
 
 
-def statementCommand(user, password, bank, outdir, account, accountType):
+def _deprecatedStatementCommand(user, password, bank, outdir, account, accountType):
     c = '''ofxconnect -s --user=%(user)s --pass="%(pass)s" --fid=%(fid)s 
         --bank=%(bank)s --org="%(org)s" --acct=%(account)s 
         --type=%(accountType)s --past=30 --url=%(url)s
