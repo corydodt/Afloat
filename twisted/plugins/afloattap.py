@@ -37,10 +37,13 @@ class AfloatServerMaker(object):
         Construct the test daemon.
         """
         # do startup tasks, if any.
-        resource = VhostFakeRoot(Root()  )
+        root = Root()
+        resource = VhostFakeRoot(root)
         factory = STFUSite(resource)
         port = int(options['port'])
         svc = AfloatService(port, factory)
+        root.service = svc
+        
         return svc
 
 
