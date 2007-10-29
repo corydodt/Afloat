@@ -1,5 +1,6 @@
 # vi:ft=python
 import sys
+import datetime
 
 from twisted.python import usage
 
@@ -27,10 +28,10 @@ class Banking(object):
             w(' #' + id)
             w('  HOLDS!')
             for hold in account.holds:
-                w('   ' + hold.amount + '  ' + hold.description)
+                w('   %s %s' % (hold.amount, hold.description))
             w('  TXNS!')
             for id, txn in sorted(account.transactions.items()):
-                w('   ' + txn.amount + '  ' + txn.date + '  ' + txn.memo)
+                w('   %s %s %s' % (txn.amount, txn.date, txn.memo))
 
         return '\n'.join(s)
 
@@ -105,12 +106,13 @@ X                                        /availbal/balamt (assert against signup
 
     def __init__(self, *a, **kw):
         sgmllib.SGMLParser.__init__(self, *a, **kw)
-        self._data = ""
+        self._data = u""
         self._stateStack = []
         self.banking = Banking()
         self.currentAccount = None
         self.currentTransaction = None
         self.debug = False
+        self.ofxEncoding = None
 
     def handle_data(self, data):
         """
@@ -119,7 +121,7 @@ X                                        /availbal/balamt (assert against signup
         before the end of the tag.
         """
         if data.strip() and self._stateStack:
-            self._data = self._data + data
+            self._data = self._data + data.decode(self.ofxEncoding)
             if self._stateStack[-1] != '#CDATA':
                 self._stateStack.append('#CDATA')
 
@@ -143,7 +145,7 @@ X                                        /availbal/balamt (assert against signup
             dataHandler = getattr(self, methodName, self.unknownData)
             dataHandler(self._stateStack[:], last, self._data.strip())
             # clear data
-            self._data = ""
+            self._data = u""
             return last
 
     def finish_starttag(self, tag, attrs):
@@ -209,7 +211,7 @@ X                                        /availbal/balamt (assert against signup
     def data_amt(self, stack, tag, data):
         if stackEndsWith(stack, 'hold'):
             hold = self.currentTransaction
-            hold.amount = data
+            hold.amount = parseCurrency(data)
 
     def data_desc(self, stack, tag, data):
         if stackEndsWith(stack, 'hold'):
@@ -219,7 +221,7 @@ X                                        /availbal/balamt (assert against signup
     def data_dtapplied(self, stack, tag, data):
         if stackEndsWith(stack, 'hold'):
             hold = self.currentTransaction
-            hold.dateApplied = data
+            hold.dateApplied = parseDate(data)
 
     def data_regdmax(self, stack, tag, data):
         # TODO - show this in the UI somewhere
@@ -229,9 +231,13 @@ X                                        /availbal/balamt (assert against signup
         # TODO - show this in the UI somewhere
         self.printDebug(data)
 
+    def data_trntype(self, stack, tag, data):
+        txn = self.currentTransaction
+        txn.type = data
+
     def data_trnamt(self, stack, tag, data):
         txn = self.currentTransaction
-        txn.amount = data
+        txn.amount = parseCurrency(data)
 
     def data_fitid(self, stack, tag, data):
         txn = self.currentTransaction
@@ -241,7 +247,7 @@ X                                        /availbal/balamt (assert against signup
 
     def data_dtposted(self, stack, tag, data):
         if stackEndsWith(stack, 'stmttrn'):
-            self.currentTransaction.date = data
+            self.currentTransaction.date = parseDate(data)
 
     def data_memo(self, stack, tag, data):
         if stackEndsWith(stack, 'stmttrn'):
@@ -253,6 +259,18 @@ X                                        /availbal/balamt (assert against signup
     def printDebug(self, s):
         if self.debug:
             print s
+
+
+def parseCurrency(s):
+    """Return cents
+    """
+    return int(float(s) * 100)
+
+def parseDate(s):
+    """Return a datetime object"""
+    if s == 'None':
+        return None
+    return datetime.datetime.strptime(s[:14], '%Y%m%d%H%M%S')
 
 
 def stackEndsWith(stack, s):
@@ -278,6 +296,7 @@ class Options(usage.Options):
         d = self['directory']
         for ofx in ['%s/%s.ofx' % (d,x) for x in 'account', 'statement']:
             doc = open(ofx).read()
+            p.ofxEncoding = 'latin1'  # FIXME
             p.feed(doc)
 
         print p.banking.textReport()
