@@ -71,7 +71,9 @@ class OFXParser(sgmllib.SGMLParser):
 .                         /users.primacn (to verify)
 X          /signupmsgsrsv1/acctinfors/acctinfo/bankacctinfo/bankacctfrom/acctid (all available, key)
 X                                                          /users.bankinfo/ledgerbal/balamt (all by acctid)
+X                                                                                   /dtasof (all by acctid)
 X                                                                         /availbal/balamt (all by acctid)
+X                                                                                  /dtasof (all by acctid)
 X                                                                         /hold/dtapplied (all by acctid, key)
 X                                                                              /desc  (all by acctid by dtapplied)
 X                                                                              /amt  (all by acctid by dtapplied)
@@ -79,15 +81,17 @@ X                                                                              /
 .                                                                         /regdmax (all by accountid)
 X          /bankmsgsrsv1/stmtrnsrs/stmtrs/bankacctfrom/acctid
 X                                        /banktranlist/stmttrn/fitid (all available, key)
-_                                                             /trntype
+X                                                             /trntype
 X                                                             /trnamt
 X                                                             /dtposted
 _                                                             /dtuser
 X                                                             /memo
 _                                                             /checknum
 _                                                             /users.stmt/trnbal (to verify)
-X                                        /ledgerbal/balamt (assert against signup ledgerbal)
-X                                        /availbal/balamt (assert against signup ledgerbal)
+.                                        /ledgerbal/balamt (assert against signup ledgerbal)
+.                                                  /dtasof (assert against signup ledgerbal)
+.                                        /availbal/balamt (assert against signup availbal)
+.                                                 /dtasof (assert against signup availbal)
     """
 
     ## def finish_starttag(self, tag, attrs):
@@ -192,9 +196,9 @@ X                                        /availbal/balamt (assert against signup
 
     def data_balamt(self, stack, tag, data):
         if stackEndsWith(stack, 'users.bankinfo/ledgerbal'):
-            self.currentAccount.ledgerBal = data
+            self.currentAccount.ledgerBal = parseCurrency(data)
         elif stackEndsWith(stack, 'users.bankinfo/availbal'): 
-            self.currentAccount.availBal = data
+            self.currentAccount.availBal = parseCurrency(data)
         elif stackEndsWith(stack, 'stmtrs/ledgerbal'): 
             self.printDebug(data) # TODO - verify against acctinfo ledgerbal
         elif stackEndsWith(stack, 'stmtrs/availbal'): 
@@ -252,6 +256,16 @@ X                                        /availbal/balamt (assert against signup
     def data_memo(self, stack, tag, data):
         if stackEndsWith(stack, 'stmttrn'):
             self.currentTransaction.memo = data
+
+    def data_dtasof(self, stack, tag, data):
+        if stackEndsWith(stack, 'users.bankinfo/ledgerbal'):
+            self.currentAccount.ledgerDate = parseDate(data)
+        elif stackEndsWith(stack, 'users.bankinfo/availbal'):
+            self.currentAccount.availDate = parseDate(data)
+        elif stackEndsWith(stack, 'stmtrs/ledgerbal'):
+            self.printDebug(data)
+        elif stackEndsWith(stack, 'stmtrs/availbal'):
+            self.printDebug(data)
 
     def start_stmttrn(self, attrs):
         self.currentTransaction = Transaction()

@@ -26,6 +26,17 @@ class BankTransaction(object):
     # ledgerBalance ? store the ledger balance after this txn, to verify?
 
 
+class Account(object):
+    __storm_table__ = 'account'
+    id = locals.Unicode(primary=True)
+    ledgerBalance = locals.Int()
+    ledgerAsOfDate = locals.Date()
+    availableBalance = locals.Int()
+    availableAsOfDate = locals.Date()
+    regulationDCount = locals.Int()
+    regulationDMax = locals.Int()
+
+
 class Hold(object):
     __storm_table__ = 'hold'
     id = locals.Int(primary=True)
@@ -102,6 +113,7 @@ def getOfx(store, *requests, **kw):
                 p.feed(doc)
 
             for account in p.banking.accounts.values():
+                updateAccount(store, account)
                 for txn in account.transactions.values():
                     newTransaction(store, account.id, txn)
             store.commit()
@@ -130,6 +142,19 @@ def newTransaction(store, accountId, txn):
         # TODO checkNumber = 
         # TODO ledgerBalance? = 
         store.add(bankTxn)
+
+def updateAccount(store, account):
+    bankAcct = store.get(Account, account.id)
+    if bankAcct is None:
+        bankAcct = Account()
+        bankAcct.id = account.id
+        store.add(bankAcct)
+    bankAcct.ledgerBalance = account.ledgerBal
+    bankAcct.ledgerAsOfDate = account.ledgerDate
+    bankAcct.availableBalance = account.availBal
+    bankAcct.availableAsOfDate = account.availDate
+    # bankAcct.regulationDCount =
+    # bankAcct.regulationDMax =
 
 def getGvents(store):
     pass # TODO
