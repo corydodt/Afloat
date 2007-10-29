@@ -110,6 +110,7 @@ X                                        /availbal/balamt (assert against signup
         self.banking = Banking()
         self.currentAccount = None
         self.currentTransaction = None
+        self.debug = False
 
     def handle_data(self, data):
         """
