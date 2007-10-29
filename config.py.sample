@@ -13,6 +13,7 @@ fid = "321172594"
 bank = "321172594"
 url = "https://www.eecuonline.org/scripts/isaofx.dll"
 org = "Educational Employees C U"
+ofxEncoding = 'latin1'
 
 user='xxxx'
 password='xxxx'
