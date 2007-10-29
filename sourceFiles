@@ -1,0 +1,8 @@
+#!/bin/bash
+dir=`dirname "$0"`
+find "$dir" -mindepth 1 -type d ! -path '*/.hg/*' \
+    -a ! -path '*/static/*' \
+    -a ! -name '.hg' \
+    -a ! -name 'elements' \
+    -a ! -name 'static' \
+    -a ! -name 'templates'
