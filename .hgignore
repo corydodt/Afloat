@@ -3,3 +3,4 @@
 ^afloat/afloat.db$
 ^.*/dropin.cache$
 .*\.pyc$
+^config.py$
