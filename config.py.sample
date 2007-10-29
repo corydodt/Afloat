@@ -1,0 +1,18 @@
+# vi:ft=python
+ACCOUNT_CHECKING = 1
+ACCOUNT_INVEST = 2
+ACCOUNT_CREDIT = 3
+
+
+accounts = { 
+        'xxxxxxxx=8': ACCOUNT_CHECKING,
+#        'xxxxxxxx=0': ACCOUNT_CHECKING,
+}
+
+fid = "321172594"
+bank = "321172594"
+url = "https://www.eecuonline.org/scripts/isaofx.dll"
+org = "Educational Employees C U"
+
+user='xxxx'
+password='xxxx'
