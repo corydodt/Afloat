@@ -29,6 +29,7 @@ class BankTransaction(object):
 class Account(object):
     __storm_table__ = 'account'
     id = locals.Unicode(primary=True)
+    type = locals.Unicode()
     ledgerBalance = locals.Int()
     ledgerAsOfDate = locals.Date()
     availableBalance = locals.Int()
@@ -126,7 +127,10 @@ def getOfx(store, *requests, **kw):
         return d
 
     tempdir = tempfile.mkdtemp()
-    return withTempdir(tempdir) # .addBoth(lambda _: shutil.rmtree(tempdir))
+    def doneWithTempdir(banking, tempdir):
+        shutil.rmtree(tempdir)
+        return banking
+    return withTempdir(tempdir).addBoth(doneWithTempdir, tempdir)
 
 
 def newTransaction(store, accountId, txn):
@@ -149,6 +153,7 @@ def updateAccount(store, account):
         bankAcct = Account()
         bankAcct.id = account.id
         store.add(bankAcct)
+    bankAcct.type = account.type
     bankAcct.ledgerBalance = account.ledgerBal
     bankAcct.ledgerAsOfDate = account.ledgerDate
     bankAcct.availableBalance = account.availBal

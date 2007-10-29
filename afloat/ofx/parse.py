@@ -270,6 +270,9 @@ _                                                             /users.stmt/trnbal
     def start_stmttrn(self, attrs):
         self.currentTransaction = Transaction()
 
+    def data_accttype(self, stack, tag, data):
+        self.currentAccount.type = data
+
     def printDebug(self, s):
         if self.debug:
             print s
