@@ -32,8 +32,18 @@ CREATE TABLE scheduledtxn (
 
 CREATE TABLE networklog (
     id INT PRIMARY KEY,
-    eventDateTime INT DATETIME,
+    eventDateTime DATETIME,
     service VARCHAR,
     description VARCHAR,
     severity VARCHAR
+);
+
+CREATE TABLE account (
+    id VARCHAR PRIMARY KEY,
+    ledgerBalance INT NOT NULL,
+    ledgerAsOfDate DATETIME,
+    availableBalance INT,
+    availableAsOfDate DATETIME,
+    regulationDCount INT,
+    regulationDMax INT -- maybe always == 6?
 );
