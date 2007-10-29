@@ -40,6 +40,7 @@ CREATE TABLE networklog (
 
 CREATE TABLE account (
     id VARCHAR PRIMARY KEY,
+    type VARCHAR,
     ledgerBalance INT NOT NULL,
     ledgerAsOfDate DATETIME,
     availableBalance INT,
