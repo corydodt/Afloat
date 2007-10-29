@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Run twistd afloat repeatedly, restarting whenever a source file changes.
+echo
+echo ^C to kill.
+echo
+
+killTwistd() {
+    if [ -e afloat.pid ]; then
+        PID=`cat afloat.pid`
+        kill $PID
+        echo WAITING ON $PID
+        wait $PID >/dev/null 2>&1
+        echo TWISTD DONE.
+    fi
+}
+
+# this trap will clean up when someone presses ^C
+trap killTwistd EXIT
+
+[ -e ./options.local ] && source ./options.local
+twistdOptions=${twistdOptions:--n --pidfile afloat.pid}
+afloatOptions=${afloatOptions:-}
+dnotifyOptions=${dnotifyOptions:--M $(./sourceFiles)}
+
+safeTty() {
+    tty="`tty`"
+    if [ "$tty" == "not a tty" ]; then
+        tty=/dev/null
+    fi
+    echo "$tty"
+}
+
+while true; do
+  killTwistd
+  # Python automatically compiles source files; if we let it do that,
+  # dnotify will think something has changed as soon as twistd imports the
+  # file that changed, and we'll restart twice.
+  # To prevent that, compile this directory now before running.
+  echo COMPILING
+  python -m compileall . >/dev/null 2>&1
+  # Redirect stdin from our tty. If you don't do this, interactive pdb
+  # doesn't work.
+  echo RUNNING
+  twistd ${twistdOptions} afloat ${afloatOptions} <"`safeTty`" &
+  # and dnotify blocks waiting for anything to change...
+  dnotify --once --queue=1 ${dnotifyOptions} -e echo MODIFIED: "{}"
+done
+
