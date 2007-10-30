@@ -70,6 +70,7 @@ class OFXParser(sgmllib.SGMLParser):
 .                         /fi/fid (to verify)
 .                         /users.primacn (to verify)
 X          /signupmsgsrsv1/acctinfors/acctinfo/bankacctinfo/bankacctfrom/acctid (all available, key)
+X                                                                       /accttype (all by acctid)
 X                                                          /users.bankinfo/ledgerbal/balamt (all by acctid)
 X                                                                                   /dtasof (all by acctid)
 X                                                                         /availbal/balamt (all by acctid)
@@ -271,7 +272,8 @@ _                                                             /users.stmt/trnbal
         self.currentTransaction = Transaction()
 
     def data_accttype(self, stack, tag, data):
-        self.currentAccount.type = data
+        if stackEndsWith(stack, 'acctinfo/bankacctinfo/bankacctfrom'):
+            self.currentAccount.type = data
 
     def printDebug(self, s):
         if self.debug:
