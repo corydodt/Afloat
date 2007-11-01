@@ -1,141 +1,102 @@
 #!/usr/bin/python
 import sys, os
 import shlex
+import time
 from getpass import getpass
+import string
 
 from twisted.python import usage, procutils
-from twisted.internet import reactor, utils
+from twisted.web.client import getPage
+from twisted.internet import reactor, protocol, defer
 
-join = str.join
+from afloat.util import RESOURCE
 
-ACCOUNT_CHECKING = 1
-ACCOUNT_INVEST = 2
-ACCOUNT_CREDIT = 3
 
-def getProcessOutputUtil(commandLine):
+def spawnProcessUtil(processProtocol, commandLine):
     """
-    Convenience wrapper around getProcessOutput
+    Convenience wrapper around spawnProcess
     """
     print commandLine
     argv = shlex.split(commandLine)
     executable = procutils.which(argv[0])[0]
     rest = argv[1:]
     env = os.environ
-    return utils.getProcessOutput(executable, rest, env, errortoo=True)
+    return reactor.spawnProcess(processProtocol, executable, rest, env,
+            usePTY=1)
+
+
+class CurlProtocol(protocol.ProcessProtocol):
+    def __init__(self, processDeferred, *a, **kw):
+        self.processDeferred = processDeferred
+        self.data = []
+
+    def errReceived(self, data):
+        print data,
+
+    def outReceived(self, data):
+        self.data.append(data)
+
+    def processEnded(self, reason):
+        self.processDeferred.callback(''.join(self.data))
+
 
 class Options(usage.Options):
-    synopsis = """get site user [account] [CHECKING/SAVINGS/.. if using BASTMT]
-  or
-get --listSites
-___
-"""
-    optFlags = [['listSites', 'l', 'List all available bank sites']]
-    optParameters = [['outdir', 'd', '.', 
-        'Directory to put output files (statement.ofx, account.ofx)'],
-        ]
-
-    def parseArgs(self, siteName=None, user=None, account=None, accountType=None):
-        if self['listSites']:
-            return
-
-        # manually check that args were supplied, so we can have
-        # the special listSites behavior without causing a UsageError.
-        if None in (siteName, user, account, accountType):
-            raise usage.UsageError("Wrong number of arguments :(")
-
-        self['siteName'] = siteName
-        self['user'] = user
-        self['account'] = account
-        self['accountType'] = accountType
-
-    def opt_listSites(self):
-        raise NotImplemented
-        print "AVAILABLE SITES:\n", joined
-        self['listSites'] = True
+    synopsis = """get"""
+    # optFlags = [[ .. ]]
+    # optParameters = [[ .. ]]
 
     def postOptions(self):
-        if self['listSites']:
-            return
-
-        import afloat.ofx.get
-        siteClass = getattr(afloat.ofx.get, self['siteName'], None)
-        if siteClass is not None:
-            self['site'] = siteClass
-        else:
-            raise usage.UsageError(
-                    "** That is not a site I know. Try --listSites")
-
+        execfile(RESOURCE('../config.py'), self)
+        self['password'] = getpass(
+                prompt="Password (%s at %s): " % (self['user'], self['org']),
+                stream=sys.stderr)
         
         d = self.doGetting()
+        def gotIt(data):
+            self['out'] = data
+        d.addCallback(gotIt)
         d.addBoth(lambda _: reactor.stop())
 
         reactor.run()
+        print self.get('out', '') + '\n__________________'
 
     def doGetting(self):
-        site = self['site']
-        account = self['account']
-        acType = self['accountType']
-        user = self['user']
+        f = open(RESOURCE('ofx/request.ofx'), 'rb')
+        ofx = f.read().strip()
+        t = string.Template(ofx)
 
-        passwd = getpass(prompt="Password (%s at %s): " % (user, site.org))
+        dt = time.strftime('%Y%m%d%H%M%S')
 
-        command1 = _deprecatedAccountInfoCommand(self['user'], passwd, site, self['outdir'])
-        d1 = getProcessOutputUtil(command1)
+        getuuid = lambda: os.popen('/usr/bin/uuidgen').read().strip()
+        uuid1 = getuuid()
+        uuid2 = getuuid()
+        uuid3 = getuuid()
+        uuid4 = getuuid()
 
-        command2 = _deprecatedStatementCommand(self['user'], passwd, site, self['outdir'],
-                account, acType)
-        d1.addCallback(lambda _: getProcessOutputUtil(command2))
+        t = t.substitute({'user': self['user'],
+            'time': dt,
+            'uuid1': uuid1,
+            'uuid2': uuid2,
+            'uuid3': uuid3,
+            'uuid4': uuid4,
+            'password': self['password'],
+            'org': self['org'],
+            'fid': self['fid'],
+            'accountSavings': self['accountSavings'],
+            'accountChecking': self['accountChecking'],
+            'encoding': self['encoding'],
+            })
 
-        return d1
-
-
-def statementRequest(**kw):
-    c = '''ofxconnect -s --user=%(user)s --pass="%(password)s" --fid=%(fid)s 
-        --bank=%(bank)s --org="%(org)s" --acct=%(account)s 
-        --type=%(accountType)s --past=30 --url=%(url)s
-        %%s/statement_%(user)s_%(account)s.ofx'''
-    command = c % kw
-    def doRequest(outdir, cmd=command):
-        return getProcessOutputUtil(cmd % (outdir,))
-    return doRequest
-
-def accountInfoRequest(**kw):
-    c = '''ofxconnect -a --user=%(user)s --pass="%(password)s" --fid=%(fid)s 
-        --bank=%(bank)s --org="%(org)s" --url=%(url)s
-        "%%s"/account_%(user)s.ofx'''
-    command = c % kw
-    def doRequest(outdir, cmd=command):
-        return getProcessOutputUtil(cmd % (outdir,))
-    return doRequest
-
-
-class EECU(object):
-    fid = "321172594"
-    bank = "321172594"
-    url = "https://www.eecuonline.org/scripts/isaofx.dll"
-    org = "Educational Employees C U"
-    
-
-def _deprecatedAccountInfoCommand(user, password, bank, outdir):
-    c = '''ofxconnect -a --user=%(user)s --pass="%(pass)s" --fid=%(fid)s 
-        --bank=%(bank)s --org="%(org)s" --url=%(url)s
-        "%(outdir)s"/account.ofx'''
-    d = bank.__dict__.copy()
-    d.update( {'user': user, 'pass': password, 'outdir': outdir} )
-    c = c % d
-    return c
-
-
-def _deprecatedStatementCommand(user, password, bank, outdir, account, accountType):
-    c = '''ofxconnect -s --user=%(user)s --pass="%(pass)s" --fid=%(fid)s 
-        --bank=%(bank)s --org="%(org)s" --acct=%(account)s 
-        --type=%(accountType)s --past=30 --url=%(url)s
-        %(outdir)s/statement.ofx'''
-    d = bank.__dict__.copy()
-    d.update( {'user': user, 'pass': password, 'account': account,
-        'accountType': accountType, 'outdir': outdir})
-    c = c % d
-    return c
+        headers = {'Content-type': 'application/x-ofx'}
+        d = getPage(self['url'], headers=headers, method='POST', postdata=t)
+        # d = defer.Deferred()
+        # pp = CurlProtocol(d, t)
+        # ## cmd = 'curl --data-binary "%s" -H "Connection: close" -H "Content-Type: application/x-ofx" %s' % (self['url'],)
+        # ## spawnProcessUtil(pp, cmd)
+        # reactor.spawnProcess(pp, '/usr/bin/curl', ['--data-binary', t, '-H',
+        #     'Connection: close', '-H', 'Content-type:application/x-ofx',
+        #     self['url']], env=os.environ)
+        return d
 
 
 def run(argv=None):

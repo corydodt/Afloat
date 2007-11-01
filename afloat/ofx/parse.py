@@ -6,6 +6,8 @@ from twisted.python import usage
 
 import sgmllib
 
+from afloat.util import RESOURCE
+
 
 class Banking(object):
     """
@@ -117,7 +119,7 @@ _                                                             /users.stmt/trnbal
         self.currentAccount = None
         self.currentTransaction = None
         self.debug = False
-        self.ofxEncoding = None
+        self.encoding = None
 
     def handle_data(self, data):
         """
@@ -126,7 +128,7 @@ _                                                             /users.stmt/trnbal
         before the end of the tag.
         """
         if data.strip() and self._stateStack:
-            self._data = self._data + data.decode(self.ofxEncoding)
+            self._data = self._data + data.decode(self.encoding)
             if self._stateStack[-1] != '#CDATA':
                 self._stateStack.append('#CDATA')
 
@@ -226,7 +228,8 @@ _                                                             /users.stmt/trnbal
     def data_dtapplied(self, stack, tag, data):
         if stackEndsWith(stack, 'hold'):
             hold = self.currentTransaction
-            hold.dateApplied = parseDate(data)
+            # dtapplied has its own stupid date format
+            hold.dateApplied = parseDate2(data)
 
     def data_regdmax(self, stack, tag, data):
         # TODO - show this in the UI somewhere
@@ -285,6 +288,14 @@ def parseCurrency(s):
     """
     return int(float(s) * 100)
 
+
+def parseDate2(s):
+    """Return a datetime object"""
+    if s == 'None':
+        return None
+    return datetime.datetime.strptime(s[:10], '%m/%d/%Y')
+
+
 def parseDate(s):
     """Return a datetime object"""
     if s == 'None':
@@ -301,24 +312,23 @@ def stackEndsWith(stack, s):
 
 
 class Options(usage.Options):
-    synopsis = "parse directory"
+    synopsis = "parse"
     # optParameters = [[long, short, default, help], ...]
     optFlags = [['debug', 'd', 'Whether to print out debugging output'],
             ]
 
-    def parseArgs(self, directory):
-        self['directory'] = directory
-
     def postOptions(self):
+        execfile(RESOURCE('../config.py'), self)
         p = OFXParser()
         p.debug = self['debug']
-        d = self['directory']
-        for ofx in ['%s/%s.ofx' % (d,x) for x in 'account', 'statement']:
-            doc = open(ofx).read()
-            p.ofxEncoding = 'latin1'  # FIXME
-            p.feed(doc)
+        ofx = self.get('stream')
+        if ofx is None:
+            ofx = sys.stdin.read()
+        p.encoding = self['encoding']
+        p.feed(ofx)
 
-        print p.banking.textReport()
+        if self['debug']:
+            print p.banking.textReport()
 
 
 def run(argv=None):
