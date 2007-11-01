@@ -5,13 +5,27 @@ import sys
 join = str.join
 
 sites = {
-                "MYCreditUnion": {
-                        "caps": [ "SIGNON", "BASTMT" ],
-                        "fid": "31337",     # ^- this is what i added, for checking/savings/debit accounts- think "bank statement"
-                        "fiorg": "MyCreditUnion", 
-                        "url": "https://ofx.mycreditunion.org",
-                        "bankid": "21325412453", # bank routing #
-                }       
+        "EECU": {
+                "caps": [ "SIGNON", "BASTMT" ],
+                "fid": "321172594",
+                "fiorg": "Educational Employees C U", 
+                "url": "https://www.eecuonline.org/scripts/isaofx.dll",
+                "bankid": "321172594", # bank routing #
+        },
+        "TEST": {
+                "caps": [ "SIGNON", "BASTMT" ],
+                "fid": "321172594",
+                "fiorg": "Educational Employees C U", 
+                "url": "http://localhost:9191",
+                "bankid": "321172594", # bank routing #
+        },
+        "MYCreditUnion": {
+                "caps": [ "SIGNON", "BASTMT" ],
+                "fid": "31337",     # ^- this is what i added, for checking/savings/debit accounts- think "bank statement"
+                "fiorg": "MyCreditUnion", 
+                "url": "https://ofx.mycreditunion.org",
+                "bankid": "21325412453", # bank routing #
+        },
    }
                                                                                                 
 def _field(tag,value):
@@ -155,7 +169,7 @@ class OFXClient:
                                   { "Content-type": "application/x-ofx",
                                     "Accept": "*/*, application/x-ofx"
                                   })
-        if 1:
+        if 0:
             f = urllib2.urlopen(request)
             response = f.read()
             f.close()
