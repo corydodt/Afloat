@@ -5,39 +5,11 @@ import time
 from getpass import getpass
 import string
 
-from twisted.python import usage, procutils
+from twisted.python import usage
 from twisted.web.client import getPage
-from twisted.internet import reactor, protocol, defer
+from twisted.internet import reactor, defer
 
 from afloat.util import RESOURCE
-
-
-def spawnProcessUtil(processProtocol, commandLine):
-    """
-    Convenience wrapper around spawnProcess
-    """
-    print commandLine
-    argv = shlex.split(commandLine)
-    executable = procutils.which(argv[0])[0]
-    rest = argv[1:]
-    env = os.environ
-    return reactor.spawnProcess(processProtocol, executable, rest, env,
-            usePTY=1)
-
-
-class CurlProtocol(protocol.ProcessProtocol):
-    def __init__(self, processDeferred, *a, **kw):
-        self.processDeferred = processDeferred
-        self.data = []
-
-    def errReceived(self, data):
-        print data,
-
-    def outReceived(self, data):
-        self.data.append(data)
-
-    def processEnded(self, reason):
-        self.processDeferred.callback(''.join(self.data))
 
 
 class Options(usage.Options):
@@ -89,13 +61,6 @@ class Options(usage.Options):
 
         headers = {'Content-type': 'application/x-ofx'}
         d = getPage(self['url'], headers=headers, method='POST', postdata=t)
-        # d = defer.Deferred()
-        # pp = CurlProtocol(d, t)
-        # ## cmd = 'curl --data-binary "%s" -H "Connection: close" -H "Content-Type: application/x-ofx" %s' % (self['url'],)
-        # ## spawnProcessUtil(pp, cmd)
-        # reactor.spawnProcess(pp, '/usr/bin/curl', ['--data-binary', t, '-H',
-        #     'Connection: close', '-H', 'Content-type:application/x-ofx',
-        #     self['url']], env=os.environ)
         return d
 
 
