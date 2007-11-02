@@ -2,11 +2,6 @@
 Interact with the local storm database.  Retrieve OFX, google events, etc. into
 storm tables
 """
-import glob
-import tempfile
-import shutil
-
-from twisted.internet import defer
 from twisted.python import log
 
 from storm import locals
@@ -70,67 +65,49 @@ class NetworkLog(object):
 
 def createTables():
     import os
-    os.system('sqlite3 -echo afloat.db < %s' % (RESOURCE('tables.sql'),))
+    os.system('sqlite3 -echo %s < %s' % (RESOURCE('afloat.db'), RESOURCE('tables.sql'),))
 
 def initializeStore():
     db = locals.create_database('sqlite:///%s' % (RESOURCE('afloat.db'),))
     store = locals.Store(db)
     return store
 
-def getOfx(store, *requests, **kw):
+def getOfx(store, request, **kw):
     """
     Retrieve, then parse, the OFX into the storm database
 
-    requests is a list of callables.  When called with a directory name, they
-    should return a deferred which fires when the request is finished.
-
-    The callable should write a file named *.ofx to the directory it was
-    passed.
+    request is a callable.  When called, they should return a deferred which
+    fires with the ofx stream when the request is finished.
 
     kwargs:
-        ofxEncoding: the encoding used in the ofx files to be retrieved (may
-                     be set in config.py originally)
+        encoding: the encoding used in the ofx files to be retrieved (may
+                  be set in config.py originally)
     """
-    ofxEncoding = kw['ofxEncoding']
+    encoding = kw['encoding']
 
-    def withTempdir(outdir):
-        d = defer.Deferred()
-        for request in requests:
-            cb = lambda _, req=request: req(outdir)
-            d.addCallback(cb)
+    d = request()
 
-        def gotOfxFiles(_):
-            from afloat.ofx.parse import OFXParser
-            p = OFXParser()
-            p.ofxEncoding = ofxEncoding
-            # TODO - get passed-in self['debug'] ?
-            ## p.debug = self['debug']
+    def gotOfx(ofx):
+        from afloat.ofx.parse import OFXParser
+        p = OFXParser()
+        p.encoding = encoding
+        # TODO - get passed-in self['debug'] ?
+        ## p.debug = self['debug']
 
-            for ofx in glob.glob(outdir + '/account*.ofx'):
-                doc = open(ofx).read()
-                p.feed(doc)
-            for ofx in glob.glob(outdir + '/statement*.ofx'):
-                doc = open(ofx).read()
-                p.feed(doc)
+        p.feed(ofx)
+        open('/tmp/ofx.ofx', 'wb').write(ofx)
 
-            for account in p.banking.accounts.values():
-                updateAccount(store, account)
-                for txn in account.transactions.values():
-                    newTransaction(store, account.id, txn)
-            store.commit()
-            # TODO - matchups
-            # TODO - create storm objects for Holds
-            return p.banking
+        for account in p.banking.accounts.values():
+            updateAccount(store, account)
+            for txn in account.transactions.values():
+                newTransaction(store, account.id, txn)
+        store.commit()
+        # TODO - matchups
+        # TODO - create storm objects for Holds
+        return p.banking
 
-        d.addCallback(gotOfxFiles).addErrback(log.err)
-        d.callback(None)
-        return d
-
-    tempdir = tempfile.mkdtemp()
-    def doneWithTempdir(banking, tempdir):
-        shutil.rmtree(tempdir)
-        return banking
-    return withTempdir(tempdir).addBoth(doneWithTempdir, tempdir)
+    d.addCallback(gotOfx).addErrback(log.err)
+    return d
 
 
 def newTransaction(store, accountId, txn):

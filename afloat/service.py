@@ -50,27 +50,21 @@ class AfloatService(internet.TCPServer):
 
     def doRequests(self):
         """
-        Run all the network requests for OFX files and gvents
+        Run all the network requests for OFX data and gvents
         """
         c = self.config
 
         # set up requests for event and bank data retrieval
         from afloat.ofx import get
-        from afloat import database
-        rq1 = get.accountInfoRequest(user=c['user'],
-                password=c['password'], fid=c['fid'], bank=c['bank'],
-                org=c['org'], url=c['url'])
 
-        requests = [ rq1 ]
-        for accountNum, accountType in c['accounts'].items():
-            rq = get.statementRequest(user=c['user'],
-                    password=c['password'], fid=c['fid'], bank=c['bank'],
-                    org=c['org'], url=c['url'], account=accountNum,
-                    accountType=accountType)
-            requests.append(rq)
+        getter = get.Options()
+        getter.update(self.config)
+
+        from afloat import database
+
         # keep these processes from being garbage collected
-        self._ofxDeferred = database.getOfx(self.store, *requests,
-                **{'ofxEncoding': c['ofxEncoding']})
+        self._ofxDeferred = database.getOfx(self.store, getter.doGetting,
+                **{'encoding': c['encoding']})
         self._gventsDeferred = database.getGvents(self.store)
 
 
