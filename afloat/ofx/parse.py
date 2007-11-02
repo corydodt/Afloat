@@ -194,7 +194,7 @@ _                                                             /users.stmt/trnbal
             self.currentAccount.id = data
             self.printDebug('** NEW ACCOUNT: %s' % (data,))
             self.banking.addAccount(self.currentAccount)
-        elif stackEndsWith(stack, 'stmtrs/bankacctfrom/acctid'):
+        elif stackEndsWith(stack, 'stmtrs/bankacctfrom'):
             self.currentAccount = self.banking.getAccount(data)
 
     def data_balamt(self, stack, tag, data):
