@@ -1,13 +1,12 @@
 #!/usr/bin/python
 import sys, os
-import shlex
 import time
 from getpass import getpass
 import string
 
 from twisted.python import usage
 from twisted.web.client import getPage
-from twisted.internet import reactor, defer
+from twisted.internet import reactor
 
 from afloat.util import RESOURCE
 
