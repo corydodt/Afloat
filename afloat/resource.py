@@ -35,7 +35,7 @@ class Summary(athena.LiveElement):
     Summary at the top showing balances, hover to show holds or big
     transactions
     """
-    docFactory = loaders.xmlfile(RESOURCE("elements/Summary"))
+    docFactory = loaders.xmlfile(RESOURCE("templates/Summary"))
     # jsClass = u'Afloat.Summary'
 
     def __init__(self, service, *a, **kw):
@@ -59,7 +59,7 @@ class Graph(athena.LiveElement):
     """
     The graph showing balance and predicted balance
     """
-    docFactory = loaders.xmlfile(RESOURCE("elements/Graph"))
+    docFactory = loaders.xmlfile(RESOURCE("templates/Graph"))
     # jsClass = u'Afloat.Graph'
     def __init__(self, service, *a, **kw):
         self.service = service
@@ -70,7 +70,7 @@ class Scheduler(athena.LiveElement):
     """
     User interface for adding new future transactions
     """
-    docFactory = loaders.xmlfile(RESOURCE("elements/Scheduler"))
+    docFactory = loaders.xmlfile(RESOURCE("templates/Scheduler"))
     # jsClass = u'Afloat.Scheduler'
     def __init__(self, service, *a, **kw):
         self.service = service
