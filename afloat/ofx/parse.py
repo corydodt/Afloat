@@ -58,7 +58,7 @@ class Transaction(object):
     One transaction (date, memo, checknum, amount)
     """
     def __init__(self):
-        pass
+        self.checkNumber = None
 
 
 class Hold(object):
@@ -89,12 +89,8 @@ X                                                             /trnamt
 X                                                             /dtposted
 _                                                             /dtuser
 X                                                             /memo
-_                                                             /checknum
-_                                                             /users.stmt/trnbal (to verify)
-.                                        /ledgerbal/balamt (assert against signup ledgerbal)
-.                                                  /dtasof (assert against signup ledgerbal)
-.                                        /availbal/balamt (assert against signup availbal)
-.                                                 /dtasof (assert against signup availbal)
+X                                                             /checknum
+X                                                             /users.stmt/trnbal (to verify)
     """
 
     ## def finish_starttag(self, tag, attrs):
@@ -277,6 +273,14 @@ _                                                             /users.stmt/trnbal
     def data_accttype(self, stack, tag, data):
         if stackEndsWith(stack, 'acctinfo/bankacctinfo/bankacctfrom'):
             self.currentAccount.type = data
+
+    def data_checknum(self, stack, tag, data):
+        if stackEndsWith(stack, 'stmttrn'):
+            self.currentTransaction.checkNumber = int(data)
+
+    def data_trnbal(self, stack, tag, data):
+        if stackEndsWith(stack, 'users.stmt'):
+            self.currentTransaction.ledgerBalance = parseCurrency(data)
 
     def printDebug(self, s):
         if self.debug:
