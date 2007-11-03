@@ -7,8 +7,8 @@ CREATE TABLE banktxn (
     userDate DATETIME,
     ledgerDate DATETIME NOT NULL,
     memo VARCHAR NOT NULL,
-    checkNumber INT
-    -- ledgerBalance INT ?
+    checkNumber INT,
+    ledgerBalance INT
 );
 
 CREATE TABLE hold (
