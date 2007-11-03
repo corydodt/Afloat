@@ -141,6 +141,21 @@ def updateAccount(store, account):
 def getGvents(store):
     pass # TODO
 
+
+class BalanceDay(object):
+    def __init__(self, date, balance):
+        self.date = date
+        self.balance = balance
+
+
+def balanceDays(store):
+    return [BalanceDay(a,b) for a,b in 
+        [('11/1', 1000), ('11/2', 900), ('11/3', 800), ('11/4', 700), ('11/5',
+            600), ('11/6', 500), ('11/7', 400), ('11/8', 300), ('11/9', 200),
+            ('11/10', 100), ('11/11', 0), ('11/12', -100)]
+        ]
+
+
 if __name__ == '__main__':
     createTables()
     store = initializeStore()

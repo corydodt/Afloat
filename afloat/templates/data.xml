@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<graph 
+    numberPrefix="$"
+    showLimits="0"
+    xAxisName="day"
+    decimalPrecision="0"
+    numdivlines="0"
+    canvasBorderThickness="0"
+    canvasBorderColor="ffffff"
+    animation="0"
+    formatNumberScale="0"
+    chartRightMargin="30"
+    xmlns:n="http://nevow.com/ns/nevow/0.1"
+    n:render="days" >
+    <n:invisible n:pattern="evenDay">
+      <set color="#648f7d"><n:attr name=
+          "name"><n:slot name="date" /></n:attr><n:attr name=
+          "value"><n:slot name="balance" /></n:attr></set>
+    </n:invisible>
+    <n:invisible n:pattern="oddDay">
+      <set color="#59806f"><n:attr name=
+          "name"><n:slot name="date" /></n:attr><n:attr name=
+          "value"><n:slot name="balance" /></n:attr></set>
+    </n:invisible>
+</graph>

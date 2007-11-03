@@ -10,6 +10,26 @@ from afloat.util import RESOURCE
 from afloat import database
 
 
+class DataXML(rend.Page):
+    docFactory = loaders.xmlfile(RESOURCE('templates/data.xml'))
+    def __init__(self, service, *a, **kw):
+        self.service = service
+        super(DataXML, self).__init__(*a, **kw)
+
+    def render_days(self, ctx, data):
+        tag = ctx.tag
+        content = []
+        pgOdd = tag.patternGenerator('oddDay')
+        pgEven = tag.patternGenerator('evenDay')
+        for n, day in enumerate(database.balanceDays(self.service.store)):
+            pat = (pgOdd if n%2==1 else pgEven)()
+            pat.fillSlots('date', day.date)
+            pat.fillSlots('balance', day.balance)
+            content.append(pat)
+
+        return tag[content]
+
+
 class AfloatPage(athena.LivePage):
     docFactory = loaders.xmlfile(RESOURCE('templates/afloatpage.xhtml'))
     addSlash = 1
@@ -33,6 +53,9 @@ class AfloatPage(athena.LivePage):
         tag.fillSlots('scheduler', scheduler)
 
         return ctx.tag
+
+    def child_data_xml(self, ctx,):
+        return DataXML(self.service)
 
 
 class Summary(athena.LiveElement):
