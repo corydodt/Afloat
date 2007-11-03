@@ -9,8 +9,8 @@
               "ledger" /></a></td>
           <td><a class="availableBalance"><n:attr name="" /><n:slot name=
               "available" /></a></td>
-          <td><a class="last3">Last 3 (+)</a></td>
-          <td><a class="last3">Last 3 Big (-)</a></td>
+          <td><a class="last3">Last 3 (+$)</a></td>
+          <td><a class="last3">Last 3 Big (-$)</a></td>
         </tr>
       </tbody>
     </table>
