@@ -12,6 +12,7 @@ from afloat import database
 
 class DataXML(rend.Page):
     docFactory = loaders.xmlfile(RESOURCE('templates/data.xml'))
+
     def __init__(self, service, *a, **kw):
         self.service = service
         super(DataXML, self).__init__(*a, **kw)
@@ -28,6 +29,13 @@ class DataXML(rend.Page):
             content.append(pat)
 
         return tag[content]
+
+    def renderHTTP(self, ctx):
+        """
+        Set text/xml on the resource
+        """
+        inevow.IRequest(ctx).setHeader('content-type', 'text/xml')
+        return rend.Page.renderHTTP(self, ctx)
 
 
 class AfloatPage(athena.LivePage):
