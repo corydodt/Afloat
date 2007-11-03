@@ -5,4 +5,5 @@ find "$dir" -mindepth 1 -type d ! -path '*/.hg/*' \
     -a ! -name '.hg' \
     -a ! -name 'elements' \
     -a ! -name 'static' \
-    -a ! -name 'templates'
+    -a ! -name 'templates' \
+    -a ! -name '*.db'
