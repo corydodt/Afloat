@@ -1,0 +1,71 @@
+<html xmlns='http://www.w3.org/1999/xhtml'>
+  <!-- vi:ft=html
+  -->
+  <head>
+    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8' />
+    <title>FusionCharts test</title>
+  <script type="text/javascript" src=
+    "static/3p/prototype.js"></script>
+  <script type="text/javascript" src=
+    "static/3p/fusionchartsfree/FusionCharts.js"></script>
+  </head>
+  <body>
+
+
+<!--
+
+    <object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase=
+      "http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" 
+      width="600" height="500" id="Column3D" >
+      <param name="movie" value=
+        "static/3p/fusionchartsfree/FCF_Column3D.swf" />
+      <param name="FlashVars" value=
+        "&dataURL=static/Data.xml&chartWidth=600&chartHeight=500">
+      <param name="quality" value="high" />
+      <embed src="static/3p/fusionchartsfree/FCF_Column3D.swf" flashVars=
+        "&dataURL=static/Data.xml&chartWidth=600&chartHeight=500" 
+        quality="high" width="600" height="500" name="Column3D" 
+        type="application/x-shockwave-flash" pluginspage=
+        "http://www.macromedia.com/go/getflashplayer" />
+    </object>
+-->
+
+
+
+<!--
+  <div id="chart1div">
+    <p>&nbsp;</p>
+    <p>FusionCharts needs Adobe Flash Player to run. If you're unable to see
+the chart here, it means that your browser does not seem to have the Flash
+Player Installed. You can downloaded it <a href=
+"http://www.adobe.com/products/flashplayer/" target=
+"_blank"><u>here</u></a> for free.</p>
+  </div>
+  <script type="text/javascript">
+var chart1 = new FusionCharts("static/3p/fusionchartsfree/FCF_Column3D.swf",
+  "Column3D", "600", "500");
+chart1.setDataURL("static/Data.xml");
+chart1.render("chart1div");
+  </script>
+
+-->
+
+
+  <div class="chart1div">
+    <p>&nbsp;</p>
+    <p>FusionCharts needs Adobe Flash Player to run. If you're unable to see
+the chart here, it means that your browser does not seem to have the Flash
+Player Installed. You can downloaded it <a href=
+"http://www.adobe.com/products/flashplayer/" target=
+"_blank"><u>here</u></a> for free.</p>
+  </div>
+  <script type="text/javascript">
+var chart1 = new FusionCharts("static/3p/fusionchartsfree/FCF_Column3D.swf",
+  "Column3D", "600", "500");
+/* chart1.setDataURL("static/Data.xml"); */
+chart1.setDataXML("<graph caption='Monthly Unit Sales' xAxisName='Month' yAxisName='Units' decimalPrecision='0' formatNumberScale='0' chartRightMargin='30'> <set name='Jan' value='462' color='AFD8F8' /> <set name='Feb' value='857' color='F6BD0F' /> <set name='Mar' value='671' color='8BBA00' /> <set name='Apr' value='494' color='FF8E46'/> <set name='May' value='761' color='008E8E'/> <set name='Jun' value='960' color='D64646'/> <set name='Jul' value='629' color='8E468E'/> <set name='Aug' value='622' color='588526'/> <set name='Sep' value='376' color='B3AA00'/> <set name='Oct' value='494' color='008ED6'/> <set name='Nov' value='761' color='9D080D'/> <set name='Dec' value='960' color='FFFFFF'/> </graph>");
+chart1.render($$(".chart1div")[0]);
+  </script>
+
+  </body>
+</html>
