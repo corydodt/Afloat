@@ -18,16 +18,21 @@ class AfloatPage(athena.LivePage):
         super(AfloatPage, self).__init__(*a, **kw)
     
     def render_all(self, ctx, data):
+        tag = ctx.tag
+
         summary = Summary(self.service)
         summary.setFragmentParent(self)
+        tag.fillSlots('summary', summary)
 
         graph = Graph(self.service)
         graph.setFragmentParent(self)
+        tag.fillSlots('graph', graph)
 
         scheduler = Scheduler(self.service)
         scheduler.setFragmentParent(self)
+        tag.fillSlots('scheduler', scheduler)
 
-        return ctx.tag[summary, graph, scheduler]
+        return ctx.tag
 
 
 class Summary(athena.LiveElement):

@@ -8,15 +8,25 @@
     <link rel="stylesheet" type="text/css" href="/static/afloat.css" />
 
     <script type="text/javascript" language="javascript"
-      src="/static/3p/prototype.js" />
+      src="/static/3p/prototype.js"></script>
     <script type="text/javascript" language="javascript"
-      src="/static/3p/scriptaculous.js" />
+      src="/static/3p/scriptaculous.js"></script>
     <script type="text/javascript" language="javascript"
-      src="/static/3p/excanvas.js" />
-    <script type="text/javascript" language="javascript"
-      src="/static/3p/plotr_uncompressed.js" />
+      src="/static/3p/fusionchartsfree/FusionCharts.js"></script>
 
     <n:invisible n:render="liveglue" />
   </head>
-  <body n:render="all" />
+  <body>
+    <div id="x1" />
+    <div id="x2">
+      <div class="horizHairline" />
+      <div id="x2-1" n:render="all">
+        <n:slot name="summary" />
+        <n:slot name="graph" />
+        <n:slot name="scheduler" />
+        <div style="height:1em;clear:both;" />
+      </div>
+      <div class="horizHairline" />
+    </div>
+  </body>
 </html>

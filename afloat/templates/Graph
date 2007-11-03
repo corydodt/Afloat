@@ -1,7 +1,21 @@
 <div xmlns:n="http://nevow.com/ns/nevow/0.1" n:render="liveElement" class=
     "graph">
-graph
-<!-- vi:ft=html
--->
+  <div class="moneys">
+    <p> </p>
+    <p>FusionCharts needs Adobe Flash Player to run. If you're unable to see
+the chart here, it means that your browser does not seem to have the Flash
+Player Installed. You can downloaded it <a href=
+"http://www.adobe.com/products/flashplayer/" target=
+"_blank"><u>here</u></a> for free.</p>
+  </div>
+  <script type="text/javascript">
+var chart1 = new FusionCharts("/static/3p/fusionchartsfree/FCF_Column2D.swf",
+  "Column3D", "600", "400");
+/* chart1.setDataURL("static/Data.xml"); */
+chart1.setDataXML("&lt;graph numberPrefix='$' showLimits='0'  xAxisName='day' decimalPrecision='0' numdivlines='0' canvasBorderThickness='0' canvasBorderColor='ffffff' animation='0' formatNumberScale='0' chartRightMargin='30'&gt; &lt;set name='Jan' value='462' color='AFD8F8' /&gt; &lt;set name='Feb' value='857' color='F6BD0F' /&gt; &lt;set name='Mar' value='671' color='8BBA00' /&gt; &lt;set name='Apr' value='494' color='FF8E46'/&gt; &lt;set name='May' value='761' color='008E8E'/&gt; &lt;set name='Jun' value='960' color='D64646'/&gt; &lt;set name='Jul' value='629' color='8E468E'/&gt; &lt;set name='Aug' value='622' color='588526'/&gt; &lt;set name='Sep' value='376' color='B3AA00'/&gt; &lt;set name='Oct' value='494' color='008ED6'/&gt; &lt;set name='Nov' value='761' color='9D080D'/&gt; &lt;set name='Dec' value='960' color='FFFFFF'/&gt; &lt;/graph&gt;");
+
+chart1.render($$(".moneys")[0]);
+  </script>
+<!-- vi:set ft=html: -->
 </div>
 

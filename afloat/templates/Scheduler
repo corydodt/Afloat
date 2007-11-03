@@ -1,22 +1,23 @@
 <div xmlns:n="http://nevow.com/ns/nevow/0.1" n:render="liveElement" class=
     "scheduler">
-    <div class="schedulerLeft">
-      <form name="scheduler">
-        <input type="text" name="newItem" />
-      </form>
-    </div>
-    <div class="schedulerRight">
-      Next 3 weeks:<br />
-      <table>
-        <tbody>
-          <tr n:pattern="upcomingItems">
-            <td><strong><n:slot name="amount" /></strong></td>
-            <td><n:slot name="memo" /></td>
-            <td><n:slot name="date" /></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="schedulerLeft">
+    <div>New transaction:</div>
+    <form name="scheduler">
+      <input type="text" name="newItem" />
+    </form>
+  </div>
+  <div class="schedulerRight">
+    Next 3 weeks:<br />
+    <table>
+      <tbody>
+        <tr n:pattern="upcomingItems">
+          <td><strong><n:slot name="amount" /></strong></td>
+          <td><n:slot name="memo" /></td>
+          <td><n:slot name="date" /></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 <!-- vi:set ft=html: -->
 </div>
 
