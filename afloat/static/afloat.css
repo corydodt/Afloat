@@ -2,15 +2,16 @@
 
 body { 
     font-family: sans-serif;
-    background-color: #fffdca;
+    background-color: #D3E6CF;
 }
 
 .graphs {
     width: 600px;
     height: 296px;
-    border: 2px solid #B3AE40;
+    border: 2px solid #618059;
     margin-bottom: 5pt;
 }
+
 .moneys {
 }
 
@@ -22,6 +23,7 @@ body {
     width: 1px;
     height: 2em;
 }
+
 .scheduler2 {
     float: left;
 }
@@ -30,7 +32,7 @@ body {
 {
     float: left;
     margin-left: 1em;
-    border-left: 1px solid #B3AE40;
+    border-left: 1px solid #618059;
     padding-left: 1em;
 }
 .schedulerLeft
@@ -50,11 +52,14 @@ body {
 .summary table {
     width: 600px;
 }
+
 .summary td {
     border: none;
 }
+
 .summary thead td {
-    border-bottom: 1px solid #B3AE40;
+    border-bottom: 1px solid #618059;
+    color: #618059;
 }
 
 .ledgerBalance, .availableBalance {
@@ -82,7 +87,7 @@ body {
 #x2 {
     float: left;
     padding: 0px 5px 0px 5px;
-    border: 1px solid #B3AE40;
+    border: 1px solid #618059;
     border-top: 0px;
     border-bottom: 0px;
     height: 100%;
@@ -97,7 +102,7 @@ body {
 
 .horizHairline {
     height:1px;
-    border-bottom:1px solid #B3AE40;
+    border-bottom:1px solid #618059;
     margin: 5pt;
 }
 
