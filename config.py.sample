@@ -1,19 +1,15 @@
 # vi:ft=python
-ACCOUNT_CHECKING = 1
-ACCOUNT_INVEST = 2
-ACCOUNT_CREDIT = 3
-
-
-accounts = { 
-        'xxxxxxxx=8': ACCOUNT_CHECKING,
-#        'xxxxxxxx=0': ACCOUNT_CHECKING,
-}
+accountChecking = 'xxxxxxxx=8'
+accountSavings = 'xxxxxxxx=0'
 
 fid = "321172594"
-bank = "321172594"
 url = "https://www.eecuonline.org/scripts/isaofx.dll"
 org = "Educational Employees C U"
-ofxEncoding = 'latin1'
+encoding = 'latin1'
 
-user='xxxx'
-password='xxxx'
+user = 'xxxx'
+password = 'xxxx'
+
+gventEmail = 'xxxxxxxx@gmail.com'
+gventPassword = 'xxxx'
+gventCalendar = 'bd7j228bh3984723fd0x8dhf50@group.calendar.google.com'
