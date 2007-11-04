@@ -1,0 +1,25 @@
+<div xmlns:n="http://nevow.com/ns/nevow/0.1" n:render="liveElement" class=
+    "graphs">
+  <div class='graphSelect'>
+    <select n:render="selector" onchange=
+      "Afloat.Graphs.selectGraph($F(this))">
+      <option n:pattern="accountType"><n:attr name=
+        "value"><n:slot name="accountType" /></n:attr><n:slot name=
+        "accountType" /></option>
+    </select>
+  </div>
+  <n:invisible n:render="allGraphs">
+    <div class="moneys" n:pattern="oneGraph">
+      <div><n:attr name="class">graph-<n:slot name="accountType" /></n:attr>
+        <p> </p>
+        <p>FusionCharts needs Adobe Flash Player to run. If you're unable to see
+    the chart here, it means that your browser does not seem to have the Flash
+    Player Installed. You can downloaded it <a href=
+    "http://www.adobe.com/products/flashplayer/" target=
+    "_blank"><u>here</u></a> for free.</p>
+      </div>
+    </div>
+  </n:invisible>
+<!-- vi:set ft=html: -->
+</div>
+

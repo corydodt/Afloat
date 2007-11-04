@@ -5,11 +5,13 @@ body {
     background-color: #fffdca;
 }
 
-.graph {
+.graphs {
     width: 600px;
-    height: 400px;
+    height: 296px;
     border: 2px solid #B3AE40;
     margin-bottom: 5pt;
+}
+.moneys {
 }
 
 .scheduler
@@ -91,12 +93,16 @@ body {
     background-color: white;
     padding: 1em 1em 0px 1em;
     margin: 0px;
-    /* 
-     * height: 97.5%;
-     */
 } 
+
 .horizHairline {
     height:1px;
     border-bottom:1px solid #B3AE40;
     margin: 5pt;
+}
+
+.graphSelect {
+    float: left; clear: both;
+    height: 40px;
+    padding: 4pt 0px 0pt 4pt;
 }

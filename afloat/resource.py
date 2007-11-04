@@ -13,7 +13,8 @@ from afloat import database
 class DataXML(rend.Page):
     docFactory = loaders.xmlfile(RESOURCE('templates/data.xml'))
 
-    def __init__(self, service, *a, **kw):
+    def __init__(self, account, service, *a, **kw):
+        self.account = account
         self.service = service
         super(DataXML, self).__init__(*a, **kw)
 
@@ -22,10 +23,12 @@ class DataXML(rend.Page):
         content = []
         pgOdd = tag.patternGenerator('oddDay')
         pgEven = tag.patternGenerator('evenDay')
-        for n, day in enumerate(database.balanceDays(self.service.store)):
+
+        days = database.balanceDays(self.service.store, self.account.id)
+        for n, day in enumerate(days):
             pat = (pgOdd if n%2==1 else pgEven)()
-            pat.fillSlots('date', day.date)
-            pat.fillSlots('balance', day.balance)
+            pat.fillSlots('date', day.date.strftime('%a %m/%d'))
+            pat.fillSlots('balance', day.balance/100.)
             content.append(pat)
 
         return tag[content]
@@ -41,9 +44,11 @@ class DataXML(rend.Page):
 class AfloatPage(athena.LivePage):
     docFactory = loaders.xmlfile(RESOURCE('templates/afloatpage.xhtml'))
     addSlash = 1
-    def __init__(self, service, *a, **kw):
-        self.service = service
-        super(AfloatPage, self).__init__(*a, **kw)
+    def __init__(self, service, *args, **kw):
+        self.service = service 
+        qry = service.store.find(database.Account).order_by(database.Account.type)
+        self.accounts = [a for a in qry]
+        super(AfloatPage, self).__init__(*args, **kw)
     
     def render_all(self, ctx, data):
         tag = ctx.tag
@@ -52,9 +57,9 @@ class AfloatPage(athena.LivePage):
         summary.setFragmentParent(self)
         tag.fillSlots('summary', summary)
 
-        graph = Graph(self.service)
-        graph.setFragmentParent(self)
-        tag.fillSlots('graph', graph)
+        graphs = Graphs(self.service, self.accounts)
+        graphs.setFragmentParent(self)
+        tag.fillSlots('graphs', graphs)
 
         scheduler = Scheduler(self.service)
         scheduler.setFragmentParent(self)
@@ -62,8 +67,11 @@ class AfloatPage(athena.LivePage):
 
         return ctx.tag
 
-    def child_data_xml(self, ctx,):
-        return DataXML(self.service)
+    def locateChild(self, ctx, segs):
+        for a in self.accounts:
+            if segs[-1] == '%s.xml' % (a.id,):
+                return DataXML(a, self.service), []
+        return athena.LivePage.locateChild(self, ctx, segs)
 
 
 class Summary(athena.LiveElement):
@@ -91,15 +99,39 @@ class Summary(athena.LiveElement):
         return tag[content]
 
 
-class Graph(athena.LiveElement):
+class Graphs(athena.LiveElement):
     """
     The graph showing balance and predicted balance
     """
-    docFactory = loaders.xmlfile(RESOURCE("templates/Graph"))
-    # jsClass = u'Afloat.Graph'
-    def __init__(self, service, *a, **kw):
+    docFactory = loaders.xmlfile(RESOURCE("templates/Graphs"))
+    jsClass = u'Afloat.Graphs'
+    def __init__(self, service, accounts, *a, **kw):
         self.service = service
-        super(Graph, self).__init__(*a, **kw)
+        self.accounts = accounts
+        super(Graphs, self).__init__(*a, **kw)
+
+    def getInitialArguments(self):
+        return [[(a.type, a.id) for a in self.accounts]]
+
+    @page.renderer
+    def selector(self, req, tag):
+        pg = tag.patternGenerator("accountType")
+        content = []
+        for account in self.accounts:
+            pat = pg()
+            pat.fillSlots('accountType', account.type)
+            content.append(pat)
+        return tag[content]
+
+    @page.renderer
+    def allGraphs(self, req, tag):
+        pg = tag.patternGenerator("oneGraph")
+        content = []
+        for account in self.accounts:
+            pat = pg()
+            pat.fillSlots('accountType', account.type)
+            content.append(pat)
+        return tag[content]
 
 
 class Scheduler(athena.LiveElement):

@@ -2,6 +2,8 @@
 Interact with the local storm database.  Retrieve OFX, google events, etc. into
 storm tables
 """
+import datetime
+
 from twisted.python import log
 
 from storm import locals
@@ -18,7 +20,7 @@ class BankTransaction(object):
     ledgerDate = locals.Date()
     memo = locals.Unicode()
     checkNumber = locals.Int()
-    # ledgerBalance ? store the ledger balance after this txn, to verify?
+    ledgerBalance = locals.Int()
 
 
 class Account(object):
@@ -109,9 +111,18 @@ def getOfx(store, request, **kw):
     d.addCallback(gotOfx).addErrback(log.err)
     return d
 
-
 def newTransaction(store, accountId, txn):
-    if not store.get(BankTransaction, txn.id):
+    bankTxn = store.get(BankTransaction, txn.id)
+    if bankTxn:
+        # ledger balance can change in response to retroactive transactions
+        # (i.e. the bank inserting an adjustment) - so always keep it up to
+        # date
+        if bankTxn.ledgerDate != txn.date:
+            bankTxn.ledgerDate = txn.date
+        if bankTxn.ledgerBalance != txn.ledgerBalance:
+            bankTxn.ledgerBalance = txn.ledgerBalance
+
+    else:
         bankTxn = BankTransaction()
         bankTxn.id = txn.id
         bankTxn.account = accountId
@@ -120,8 +131,8 @@ def newTransaction(store, accountId, txn):
         # TODO userDate = 
         bankTxn.ledgerDate = txn.date
         bankTxn.memo = txn.memo
-        # TODO checkNumber = 
-        # TODO ledgerBalance? = 
+        bankTxn.checkNumber = txn.checkNumber
+        bankTxn.ledgerBalance = txn.ledgerBalance
         store.add(bankTxn)
 
 def updateAccount(store, account):
@@ -143,17 +154,65 @@ def getGvents(store):
 
 
 class BalanceDay(object):
+    """
+    The latest balance on a given day
+    """
     def __init__(self, date, balance):
         self.date = date
         self.balance = balance
 
+def days(amount):
+    return datetime.timedelta(days=amount)
 
-def balanceDays(store):
-    return [BalanceDay(a,b) for a,b in 
-        [('11/1', 1000), ('11/2', 900), ('11/3', 800), ('11/4', 700), ('11/5',
-            600), ('11/6', 500), ('11/7', 400), ('11/8', 300), ('11/9', 200),
-            ('11/10', 100), ('11/11', 0), ('11/12', -100)]
-        ]
+
+def balanceDays(store, account):
+    """
+    A BalanceDay for each day in the last 7 including today.
+    Compute by looking at the last transaction-with-balance on each day;
+    fill in days with no transactions by carrying over from previous day.
+    """
+    today = datetime.date.today()
+    weeksAgo2 = today - days(14)
+    txns = store.find(BankTransaction,
+            locals.And(
+                BankTransaction.ledgerDate >= weeksAgo2,
+                BankTransaction.account == account,
+                )).order_by(BankTransaction.ledgerDate)
+    txns = list(txns)
+
+    bdays = {}
+    for t in txns:
+        bdays[t.ledgerDate] = BalanceDay(t.ledgerDate, t.ledgerBalance)
+
+    # inspect each day slot to make sure there's a balance in it. if no
+    # balance, carry over the previous day's balance
+    currentDay = weeksAgo2
+    while currentDay <= today:
+        currentTomorrow = currentDay + days(1)
+
+        # skip up to the first date with a balance
+        if not bdays.has_key(currentDay):
+            currentDay = currentTomorrow
+            continue
+
+        if currentTomorrow not in bdays:
+            bd = bdays[currentDay]
+            bdays[currentTomorrow] = BalanceDay(currentTomorrow, bd.balance)
+
+        # now clear the txn if it is not within 6 days, because we only want
+        # to see last 7
+        if currentDay < today - days(6):
+            del bdays[currentDay]
+
+        if currentTomorrow == today:
+            break
+
+        currentDay = currentTomorrow
+
+    # TODO - compute future balances against gvents (must come after matchup
+    # step)
+
+    return zip(*sorted(bdays.items()))[1]
 
 
 if __name__ == '__main__':
