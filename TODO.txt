@@ -1,0 +1,16 @@
+1. Matchups - mark scheduled items as paid
+
+2. New-transaction widget
+
+3. Balance hovers at the top
+
+4. Burn rate computation and graph
+
+
+Minor:
+
+- pretty up the graphs, values are all bunched together
+
+- show future debits from savings / clean up defaultAccount stuff
+
+- Logo
