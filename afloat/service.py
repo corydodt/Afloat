@@ -65,6 +65,11 @@ class AfloatService(internet.TCPServer):
         # keep these processes from being garbage collected
         self._ofxDeferred = database.getOfx(self.store, getter.doGetting,
                 **{'encoding': c['encoding']})
-        self._gventsDeferred = database.getGvents(self.store)
+        self._gventsDeferred = database.getGvents(self.store,
+                email=c['gventEmail'], 
+                password=c['gventPassword'], 
+                calendar=c['gventCalendar'],
+                account=c['defaultAccount'],
+                )
 
 

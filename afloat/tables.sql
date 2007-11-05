@@ -20,7 +20,8 @@ CREATE TABLE hold (
 );
 
 CREATE TABLE scheduledtxn (
-    id INT PRIMARY KEY,
+    href VARCHAR PRIMARY KEY,
+    bankId INT,
     amount INT NOT NULL,
     title VARCHAR NOT NULL,
     expectedDate DATETIME NOT NULL,

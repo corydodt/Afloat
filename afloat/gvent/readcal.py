@@ -1,6 +1,7 @@
 import sys
 import re
 from getpass import getpass
+import datetime
 
 from twisted.python import usage
 
@@ -35,6 +36,8 @@ class MissingToAccount(Exception):
     a From account doesn't have a To account.
     """
 
+def getExactEvent(client, uri):
+    return client.GetCalendarEventEntry(uri)
 
 def retitleEvent(client, event, new_title):
     """Updates the title of the specified event with the specified new_title.
@@ -96,8 +99,9 @@ def findAccounts(s):
     Return the from,to accounts
     """
     for line in s.splitlines():
-        if re.match(r'^[a-zA-Z0-9]+->[a-zA-Z0-9]+$'):
+        if re.match(r'^[a-zA-Z0-9]+->[a-zA-Z0-9]+$', line):
             return line.split('->').strip()
+    return [None, None]
 
 def findAmount(s):
     """
@@ -142,6 +146,10 @@ def fixupEvent(client, event):
             prop = calendar.ExtendedProperty(name=EVENT_FROMACCOUNT,
                     value=fromAccount)
             event.extended_property.append(prop)
+    if EVENT_ORIGINALDATE not in propsFound:
+        prop = calendar.ExtendedProperty(name=EVENT_ORIGINALDATE,
+                value=event.when[0].start_time)
+        event.extended_property.append(prop)
 
     if changed:
         client.UpdateEvent(event.GetEditLink().href, event)
@@ -158,7 +166,54 @@ def dateQuery(client, calendarName, start_date, end_date):
     return client.CalendarQuery(query)
 
 
+class CalendarEventString(object):
+    """
+    A marshallable, trivially parseable form of a calendar event
+    """
+    def __init__(self, href, title, paidDate, originalDate, expectedDate,
+            amount, fromAccount, toAccount, ):
+        self.href = unicode(href)
+        self.title = unicode(title)
+        self.paidDate = parseDateYMD(paidDate)
+        self.originalDate = parseDateYMD(originalDate)
+        self.expectedDate = parseDateYMD(expectedDate)
+        self.amount = int(amount)
+        self.fromAccount = (None if not fromAccount else unicode(fromAccount))
+        self.toAccount = (None if not toAccount else unicode(toAccount))
+
+    def __str__(self):
+        ret = "%s %s %s %s %s %s %s %s" % (
+            self.href,
+            re.sub('\s+', '+', self.title),
+            formatDateYMD(self.paidDate) or '~',
+            formatDateYMD(self.originalDate),
+            formatDateYMD(self.expectedDate),
+            self.amount,
+            self.fromAccount or '~',
+            self.toAccount or '~',
+            )
+        return ret
+
+    @classmethod
+    def fromString(cls, s):
+        splits = s.split()
+        assert len(splits) == 8
+        new1 = cls( splits[0],
+                ' '.join(splits[1].split('+')),
+                None if splits[2] == '~' else splits[2],
+                splits[3],
+                splits[4],
+                splits[5],
+                None if splits[6] == '~' else splits[6],
+                None if splits[7] == '~' else splits[7],
+                )
+        return new1
+
+
 class GetEvents(usage.Options):
+    """
+    Print the events as a pickled list of them
+    """
     synopsis = 'date1 date2'
     optFlags = [['fixup', 'f', 'Do the fixup step, adding metadata to '
         'calendar items that do not have it'],
@@ -182,12 +237,48 @@ class GetEvents(usage.Options):
         feed = dateQuery(client, self['calendarName'], d1, d2)
 
         for e in feed.entry:
-            print e
             if self['fixup']:
                 try:
                     fixupEvent(client, e)
                 except NoAmountError:
                     pass
+
+            eProps = {}
+            for prop in e.extended_property:
+                eProps[prop.name] = prop.value
+            get = lambda k: eProps.get(k)
+            href = e.GetSelfLink().href
+
+            # skip over special events created when you break a recurring
+            # event  (??)
+            if e.original_event is not None:
+                continue
+
+            for when in e.when:
+                print CalendarEventString(href,
+                        e.title.text,
+                        get(EVENT_PAID),
+                        get(EVENT_ORIGINALDATE),
+                        when.start_time,
+                        get(EVENT_AMOUNT),
+                        get(EVENT_FROMACCOUNT),
+                        get(EVENT_TOACCOUNT),
+                        )
+
+
+def formatDateYMD(dt):
+    if dt is None:
+        return None
+    return dt.strftime('%Y-%m-%d')
+
+
+def parseDateYMD(s):
+    """
+    Return a datetime from a nnnn-nn-nn format date
+    """
+    if s is None:
+        return None
+    return datetime.datetime.strptime(s, '%Y-%m-%d')
 
 
 class Options(usage.Options):
@@ -195,8 +286,8 @@ class Options(usage.Options):
     subCommands = [
         ['get-events', None, GetEvents, 'Get all events in given date range'],
         ## ['add-event', 'add', AddEvent, 'Add an event'],
-        ## ['remove-event', 'rm', RemoveEvent, 'Remove an event'],
-        ## ['update-event', 'update', UpdateEvent, 'Update an event'],
+        ## ['remove-event', 'rm', RemoveEvent, 'Remove an event - TODO - break recurrence if necessary'],
+        ## ['update-event', 'update', UpdateEvent, 'Update an event - TODO - break recurrence if necessary'],
     ]
     optParameters = [
         ## see opt_connect
@@ -218,6 +309,7 @@ class Options(usage.Options):
     def postOptions(self):
         if not self.subCommand:
             raise usage.UsageError('** Please give a sub-command')
+
 
 def run(argv=None):
     if argv is None:

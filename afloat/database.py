@@ -2,13 +2,17 @@
 Interact with the local storm database.  Retrieve OFX, google events, etc. into
 storm tables
 """
+import os
 import datetime
 
 from twisted.python import log
+from twisted.internet import defer, reactor
+from twisted.internet.protocol import ProcessProtocol
 
 from storm import locals
 
 from afloat.util import RESOURCE
+from afloat.gvent.readcal import CalendarEventString
 
 class BankTransaction(object):
     __storm_table__ = 'banktxn'
@@ -46,7 +50,8 @@ class Hold(object):
 
 class ScheduledTransaction(object):
     __storm_table__ = 'scheduledtxn'
-    id = locals.Int(primary=True)
+    href = locals.Unicode(primary=True)
+    bankId = locals.Int()
     amount = locals.Int() # cents!
     title = locals.Unicode()
     expectedDate = locals.Date()
@@ -66,7 +71,6 @@ class NetworkLog(object):
 
 
 def createTables():
-    import os
     os.system('sqlite3 -echo %s < %s' % (RESOURCE('afloat.db'), RESOURCE('tables.sql'),))
 
 def initializeStore():
@@ -112,6 +116,9 @@ def getOfx(store, request, **kw):
     return d
 
 def newTransaction(store, accountId, txn):
+    """
+    Do CRUD operations on ofx txns we downloaded
+    """
     bankTxn = store.get(BankTransaction, txn.id)
     if bankTxn:
         # ledger balance can change in response to retroactive transactions
@@ -149,8 +156,126 @@ def updateAccount(store, account):
     # bankAcct.regulationDCount =
     # bankAcct.regulationDMax =
 
-def getGvents(store):
-    pass # TODO
+
+class GVentProtocol(ProcessProtocol):
+    """
+    Communicate with "python -m afloat.gvent.readcal ..." to retrieve the calendar
+    items on stdout
+    """
+    TERM = '\r\n'
+    def __init__(self, *a, **kw):
+        self.stream = ''
+        self.gvents = []
+        self.disconnectDeferreds = []
+
+    def streamEndsWith(self, s):
+        chars = len(s)
+        self.stream.seek(-chars, 2)
+        tail = self.stream.read()
+        return tail == s
+
+    def loadEventFromStream(self):
+        """
+        Load the last entire event from the stream
+        """
+        termPos = self.stream.find(self.TERM)
+        while termPos >= 0:
+            item = self.stream[:termPos]
+            event = CalendarEventString.fromString(item)
+            self.gvents.append(event)
+            self.stream = self.stream[termPos + len(self.TERM):]
+            termPos = self.stream.find(self.TERM)
+
+    def outReceived(self, data):
+        self.stream = self.stream + data
+        if self.TERM in self.stream:
+            self.loadEventFromStream()
+            g = self.gvents[-1]
+
+    def errReceived(self, data):
+        print '***', data
+
+    def processEnded(self, reason):
+        """Notify our disconnects"""
+        assert self.stream == '', self.stream
+        for d in self.disconnectDeferreds:
+            d.callback(reason)
+
+    def notifyOnDisconnect(self):
+        d = defer.Deferred()
+        self.disconnectDeferreds.append(d)
+        return d
+
+
+def getGvents(store, **kw):
+    """
+    Run module afloat.gvent as a python process
+    """
+    password = kw['password']
+    email = kw['email']
+    calendar = kw['calendar']
+    account = kw['account']
+
+    pp = GVentProtocol()
+
+    # TODO - d will be called back when process is running, use it if
+    # necessary
+
+    date1 = datetime.datetime.today() - days(1)
+    date2 = date1 + days(22)
+
+    date1 = date1.strftime('%Y-%m-%d')
+    date2 = date2.strftime('%Y-%m-%d')
+
+    args = ['python', '-m', 'afloat.gvent.readcal', 
+         '--connect=%s//%s//%s' % (calendar, email, password),
+         'get-events', '--fixup', date1, date2,
+        ]
+    cleanArgs = ['python', '-m', 'afloat.gvent.readcal', 
+         '--connect=%s//%s//%s' % (calendar, email, '~~~~~~~~'),
+         'get-events', '--fixup', date1, date2,
+        ]
+    print ' '.join(cleanArgs)
+    pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
+            env=os.environ, usePTY=1)
+
+    d = pp.notifyOnDisconnect()
+
+    def gotGvents(_, proto):
+        for event in proto.gvents:
+            newScheduledTransaction(store, account, event)
+        store.commit()
+
+    d.addBoth(gotGvents, pp).addErrback(log.err)
+    return d
+
+def newScheduledTransaction(store, accountId, event):
+    """
+    Do CRUD operations on gvents we downloaded
+    """
+    schedTxn = store.get(ScheduledTransaction, event.href)
+    if schedTxn is not None:
+        pass
+        # TODO - update it in the database
+
+    else:
+        e = event
+        schedTxn = ScheduledTransaction()
+        schedTxn.href = e.href
+        if e.fromAccount is None and e.toAccount is None:
+            schedTxn.fromAccount = unicode(accountId)
+        else:
+            if e.fromAccount:
+                schedTxn.fromAccount = e.fromAccount
+            if e.toAccount:
+                schedTxn.toAccount = e.toAccount
+
+        schedTxn.amount = int(e.amount)
+        schedTxn.title = e.title
+        schedTxn.expectedDate = e.expectedDate
+        schedTxn.originalDate = e.originalDate
+        schedTxn.paidDate = e.paidDate
+        store.add(schedTxn)
 
 
 class BalanceDay(object):
