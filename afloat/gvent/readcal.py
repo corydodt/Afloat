@@ -59,6 +59,19 @@ def retitleEvent(client, event, new_title):
         previous_title, event.title.text,)
     return client.UpdateEvent(event.GetEditLink().href, event)
 
+## FIXME - this doesn't work, see 
+## http://code.google.com/support/bin/answer.py?answer=55839&topic=10365
+## def cleanEvent(client, event):
+##     """
+##     Remove all extended properties from event
+##     """
+##     event.extended_property = []
+##     href = event.GetEditLink().href
+##     x = client.UpdateEvent(href, event)
+##     reget = getExactEvent(client, href)
+##     assert reget.extended_property == []
+##     return x
+
 def addExtendedProperty(client, event, name, value):
     """
     Adds an arbitrary name/value pair to the event.  This value is only
@@ -93,8 +106,8 @@ def quickAddEvent(client, calendarName, content="Tennis with John today 3pm-3:30
         '/calendar/feeds/%s/private/full' % (calendarName,))
     return new_event
 
-dollarRx = re.compile(r'^\$[0-9]+(\.[0-9]+)?$')
-noDollarRx = re.compile(r'^[0-9]+(\.[0-9]+)?$')
+dollarRx = re.compile(r'^\$-?[0-9]+(\.[0-9]+)?$')
+noDollarRx = re.compile(r'^-?[0-9]+(\.[0-9]+)?$')
 
 def findAccounts(s):
     """
@@ -150,6 +163,9 @@ def fixupEvent(client, event):
                     value=fromAccount)
             event.extended_property.append(prop)
     if EVENT_ORIGINALDATE not in propsFound:
+        # FIXME - just setting this HAS to break recurrence because
+        # there will be a separate ORIGINALDATE for each one
+        assert len(event.when) == 1
         prop = calendar.ExtendedProperty(name=EVENT_ORIGINALDATE,
                 value=event.when[0].start_time)
         event.extended_property.append(prop)
@@ -218,6 +234,36 @@ class CalendarEventString(object):
         return new1
 
 
+## FIXME - this doesn't work, see
+## http://code.google.com/support/bin/answer.py?answer=55839&topic=10365
+## class CleanEvents(usage.Options):
+##     """
+##     Remove all the extended properties within the specified date range,
+##     cleaning the list.
+##     """
+##     synopsis = 'date1 date2'
+##     def parseArgs(self, date1, date2):
+##         self['dateStart'] = date1
+##         self['dateEnd'] = date2
+## 
+##     def postOptions(self):
+##         self.update(self.parent)
+## 
+##         d1 = self['dateStart']
+##         d2 = self['dateEnd']
+## 
+##         client = CalendarService()
+##         client.password = self['password']
+##         client.email = self['email']
+##         client.source = 'TheSoftWorld-Afloat-0.0'
+##         client.ProgrammaticLogin()
+## 
+##         feed = dateQuery(client, self['calendarName'], d1, d2)
+## 
+##         for e in feed.entry:
+##             cleanEvent(client, e)
+
+
 class GetEvents(usage.Options):
     """
     Print the events as a list of them, fields separated by spaces
@@ -225,6 +271,7 @@ class GetEvents(usage.Options):
     synopsis = 'date1 date2'
     optFlags = [['fixup', 'f', 'Do the fixup step, adding metadata to '
         'calendar items that do not have it'],
+        ['show-unclean', None, 'Show events that have extended properties',],
     ]
     def parseArgs(self, date1, date2):
         self['dateStart'] = date1
@@ -245,6 +292,12 @@ class GetEvents(usage.Options):
         feed = dateQuery(client, self['calendarName'], d1, d2)
 
         for e in feed.entry:
+            if self['show-unclean']:
+                if e.extended_property:
+                    print e.title.text
+                    print '  ', [(x.name, x.value) for x in e.extended_property]
+                continue
+
             if self['fixup']:
                 try:
                     fixupEvent(client, e)
@@ -294,6 +347,7 @@ class Options(usage.Options):
     synopsis = "readcal --connect=calendar//email[//password] <subcommand>"
     subCommands = [
         ['get-events', None, GetEvents, 'Get all events in given date range'],
+        ## ['clean-events', None, CleanEvents, 'Remove extended properties from all events'],
         ## ['add-event', 'add', AddEvent, 'Add an event'],
         ## ['remove-event', 'rm', RemoveEvent, 'Remove an event - TODO - break recurrence if necessary'],
         ## ['update-event', 'update', UpdateEvent, 'Update an event - TODO - break recurrence if necessary'],

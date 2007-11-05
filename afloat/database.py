@@ -265,10 +265,15 @@ def newScheduledTransaction(store, accountId, event):
         if e.fromAccount is None and e.toAccount is None:
             schedTxn.fromAccount = unicode(accountId)
         else:
-            if e.fromAccount:
-                schedTxn.fromAccount = e.fromAccount
-            if e.toAccount:
-                schedTxn.toAccount = e.toAccount
+            # set accounts, looking up the actual ids from the account type
+            fa = e.fromAccount
+            if fa:
+                fa = store.find(Account, Account.type==fa)[0].id
+                schedTxn.fromAccount = fa
+            ta = e.toAccount
+            if ta:
+                ta = store.find(Account, Account.type==ta)[0].id
+                schedTxn.toAccount = ta
 
         schedTxn.amount = int(e.amount)
         schedTxn.title = e.title
@@ -286,13 +291,14 @@ class BalanceDay(object):
         self.date = date
         self.balance = balance
 
+
 def days(amount):
     return datetime.timedelta(days=amount)
 
 
 def balanceDays(store, account):
     """
-    A BalanceDay for each day in the last 7 including today.
+    A BalanceDay for each day in the last 7 including today, and the next 21.
     Compute by looking at the last transaction-with-balance on each day;
     fill in days with no transactions by carrying over from previous day.
     """
@@ -334,8 +340,37 @@ def balanceDays(store, account):
 
         currentDay = currentTomorrow
 
-    # TODO - compute future balances against gvents (must come after matchup
-    # step)
+    # TODO - matchups
+    next3Weeks = today + days(21)
+    ST = ScheduledTransaction
+
+    froms = store.find(ST,
+            locals.And(
+                ST.expectedDate <= next3Weeks,
+                ST.fromAccount == account,
+                )).order_by(ST.expectedDate)
+    froms = list(froms)
+
+    tos = []
+    for txn in froms:
+        if txn.toAccount is not None:
+            tos.append(txn.href)
+
+    hasToAccount = lambda t: t.href in tos
+
+    lastDay = today
+
+    for n in range(21):
+        currentDay = today + days(n)
+        currentBalance = bdays[lastDay].balance
+        for txn in froms:
+            # if there is a TO ACCOUNT, then the FROM account is a debit
+            adjustedAmount = (txn.amount if not hasToAccount(txn) else -txn.amount)
+            if txn.expectedDate == currentDay:
+                currentBalance = currentBalance + adjustedAmount
+
+        bdays[currentDay] = BalanceDay(currentDay, currentBalance)
+        lastDay = currentDay
 
     return zip(*sorted(bdays.items()))[1]
 
