@@ -15,6 +15,8 @@ CALENDAR_NAMES = {
 
 # afloat#paid ; value: a datetime that indicates when it was paid
 EVENT_PAID = 'http://thesoftworld.com/2007/afloat#paid'
+# afloat#bankId ; value: a string that matches a bank trnid
+EVENT_BANKID = 'http://thesoftworld.com/2007/afloat#bankId'
 # afloat#originalDate ; value: a datetime that indicates the user-entered date
 EVENT_ORIGINALDATE = 'http://thesoftworld.com/2007/afloat#originalDate'
 # afloat#amount ; value: an integer (cents.. divide by 100 for dollars)
@@ -100,7 +102,8 @@ def findAccounts(s):
     """
     for line in s.splitlines():
         if re.match(r'^[a-zA-Z0-9]+->[a-zA-Z0-9]+$', line):
-            return line.split('->').strip()
+            ret = [x.strip() for x in line.split('->')]
+            return ret
     return [None, None]
 
 def findAmount(s):
@@ -170,22 +173,25 @@ class CalendarEventString(object):
     """
     A marshallable, trivially parseable form of a calendar event
     """
-    def __init__(self, href, title, paidDate, originalDate, expectedDate,
-            amount, fromAccount, toAccount, ):
+    def __init__(self, href, title, paidDate, bankId, originalDate,
+            expectedDate, amount, fromAccount, toAccount, ):
+        coalesce = lambda x: (None if not x else unicode(x))
         self.href = unicode(href)
         self.title = unicode(title)
         self.paidDate = parseDateYMD(paidDate)
+        self.bankId = coalesce(bankId)
         self.originalDate = parseDateYMD(originalDate)
         self.expectedDate = parseDateYMD(expectedDate)
         self.amount = int(amount)
-        self.fromAccount = (None if not fromAccount else unicode(fromAccount))
-        self.toAccount = (None if not toAccount else unicode(toAccount))
+        self.fromAccount = coalesce(fromAccount)
+        self.toAccount = coalesce(toAccount)
 
     def __str__(self):
-        ret = "%s %s %s %s %s %s %s %s" % (
+        ret = "%s %s %s %s %s %s %s %s %s" % (
             self.href,
             re.sub('\s+', '+', self.title),
             formatDateYMD(self.paidDate) or '~',
+            self.bankId or '~',
             formatDateYMD(self.originalDate),
             formatDateYMD(self.expectedDate),
             self.amount,
@@ -197,22 +203,24 @@ class CalendarEventString(object):
     @classmethod
     def fromString(cls, s):
         splits = s.split()
-        assert len(splits) == 8
+        assert len(splits) == 9
+        parseTilde = lambda x: (None if x == '~' else x)
         new1 = cls( splits[0],
                 ' '.join(splits[1].split('+')),
-                None if splits[2] == '~' else splits[2],
-                splits[3],
+                parseTilde(splits[2]),
+                parseTilde(splits[3]),
                 splits[4],
                 splits[5],
-                None if splits[6] == '~' else splits[6],
-                None if splits[7] == '~' else splits[7],
+                splits[6],
+                parseTilde(splits[7]),
+                parseTilde(splits[8]),
                 )
         return new1
 
 
 class GetEvents(usage.Options):
     """
-    Print the events as a pickled list of them
+    Print the events as a list of them, fields separated by spaces
     """
     synopsis = 'date1 date2'
     optFlags = [['fixup', 'f', 'Do the fixup step, adding metadata to '
@@ -258,6 +266,7 @@ class GetEvents(usage.Options):
                 print CalendarEventString(href,
                         e.title.text,
                         get(EVENT_PAID),
+                        get(EVENT_BANKID),
                         get(EVENT_ORIGINALDATE),
                         when.start_time,
                         get(EVENT_AMOUNT),
