@@ -6,7 +6,7 @@ body {
 }
 
 .graphs {
-    width: 600px;
+    width: 800px;
     height: 296px;
     border: 2px solid #618059;
     margin-bottom: 5pt;
@@ -50,7 +50,7 @@ body {
 }
 
 .summary table {
-    width: 600px;
+    width: 800px;
 }
 
 .summary td {
@@ -80,7 +80,7 @@ body {
 }
 
 #x1 { float: left;
-    width: 100px;
+    width: 75px;
     height: 1px;
 }
 
@@ -91,7 +91,7 @@ body {
     border-top: 0px;
     border-bottom: 0px;
     height: 100%;
-    width: 630px;
+    width: 830px;
 }
 
 #x2-1 {

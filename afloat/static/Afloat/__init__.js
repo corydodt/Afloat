@@ -11,7 +11,7 @@ Afloat.Graphs.methods( // {{{
             var acctId = account[1];
             var chart1 = new FusionCharts(
                 "/static/3p/fusionchartsfree/FCF_Column2D.swf",
-                "Money Chart", "600", "250");
+                "Money Chart", "800", "250");
             chart1.setDataURL('/app/' + acctId + '.xml');
             var graphNode = $$('.graph-' + acctType)[0];
             graphNode.parentNode.hide()
