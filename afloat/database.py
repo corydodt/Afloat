@@ -341,15 +341,8 @@ def balanceDays(store, account):
         currentDay = currentTomorrow
 
     # TODO - matchups
-    next3Weeks = today + days(21)
-    ST = ScheduledTransaction
 
-    froms = store.find(ST,
-            locals.And(
-                ST.expectedDate <= next3Weeks,
-                ST.fromAccount == account,
-                )).order_by(ST.expectedDate)
-    froms = list(froms)
+    froms = scheduledNext3Weeks(store, account)
 
     tos = []
     for txn in froms:
@@ -373,6 +366,24 @@ def balanceDays(store, account):
         lastDay = currentDay
 
     return zip(*sorted(bdays.items()))[1]
+
+
+def scheduledNext3Weeks(store, account):
+    """
+    Return all scheduled transactions for the next 3 weeks, for the given
+    account
+    """
+    today = datetime.date.today()
+    next3Weeks = today + days(21)
+
+    ST = ScheduledTransaction
+    found = store.find(ST,
+            locals.And(
+                ST.expectedDate <= next3Weeks,
+                ST.fromAccount == unicode(account),
+                )).order_by(ST.expectedDate)
+    return  list(found)
+
 
 
 if __name__ == '__main__':

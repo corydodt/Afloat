@@ -9,7 +9,7 @@
   <div class="schedulerRight">
     Next 3 weeks:<br />
     <table>
-      <tbody>
+      <tbody n:render="scheduled">
         <tr n:pattern="upcomingItems">
           <td><strong><n:slot name="amount" /></strong></td>
           <td><n:slot name="memo" /></td>

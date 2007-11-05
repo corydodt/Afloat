@@ -53,6 +53,7 @@ class AfloatService(internet.TCPServer):
         Run all the network requests for OFX data and gvents
         """
         c = self.config
+        self.defaultAccount = c['defaultAccount']
 
         # set up requests for event and bank data retrieval
         from afloat.ofx import get

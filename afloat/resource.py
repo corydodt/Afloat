@@ -9,6 +9,8 @@ from nevow import rend, static, url, inevow, vhost, athena, loaders, page
 from afloat.util import RESOURCE
 from afloat import database
 
+MONDAY = 1
+FRIDAY = 5
 
 class DataXML(rend.Page):
     docFactory = loaders.xmlfile(RESOURCE('templates/data.xml'))
@@ -27,6 +29,11 @@ class DataXML(rend.Page):
         days = database.balanceDays(self.service.store, self.account.id)
         for n, day in enumerate(days):
             pat = (pgOdd if n%2==1 else pgEven)()
+            weekday = int(day.date.strftime('%w'))
+            if weekday in [MONDAY, FRIDAY]:
+                pat.fillSlots('showName', 1)
+            else:
+                pat.fillSlots('showName', 0)
             pat.fillSlots('date', day.date.strftime('%a %m/%d'))
             pat.fillSlots('balance', day.balance/100.)
             content.append(pat)
@@ -143,6 +150,19 @@ class Scheduler(athena.LiveElement):
     def __init__(self, service, *a, **kw):
         self.service = service
         super(Scheduler, self).__init__(*a, **kw)
+
+    @page.renderer
+    def scheduled(self, req, tag):
+        pg = tag.patternGenerator("upcomingItems")
+        ss = self.service
+        coming = database.scheduledNext3Weeks(ss.store, ss.defaultAccount)
+        for item in coming:
+            pat = pg()
+            pat.fillSlots('amount', '%.2f' % (item.amount/100.,))
+            pat.fillSlots('memo', item.title)
+            pat.fillSlots('date', item.expectedDate.strftime('%a %m/%d'))
+            tag[pat]
+        return tag
 
 
 class Root(rend.Page):
