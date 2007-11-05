@@ -6,6 +6,7 @@
 
 4. Burn rate computation and graph
 
+5. Run transaction getting/parsing on a 12-hour schedule.
 
 Minor:
 
