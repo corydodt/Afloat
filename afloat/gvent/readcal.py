@@ -9,7 +9,7 @@ from gdata.calendar.service import CalendarEventQuery, CalendarService
 from gdata import calendar
 
 CALENDAR_NAMES = {
-        'finance': 'bd7j228bhdt527n0o4pk8dhf50%40group.calendar.google.com'
+        'finance': 'bd7j228bhdt527n0o4pk8dhf50@group.calendar.google.com'
 }
 
 # afloat#paid ; value: a datetime that indicates when it was paid
@@ -158,37 +158,66 @@ def dateQuery(client, calendarName, start_date, end_date):
     return client.CalendarQuery(query)
 
 
-class Options(usage.Options):
-    synopsis = "readcal email calendarname date1 date2"
-    # optParameters = [[long, short, default, help], ...]
-
-    def parseArgs(self, email, calendarName,
-            dateStart='2007-10-01', dateEnd='2007-10-31'):
-        self['email'] = email
-        self['calendarName'] = CALENDAR_NAMES[calendarName]
-        self['dateStart'] = dateStart
-        self['dateEnd'] = dateEnd
+class GetEvents(usage.Options):
+    synopsis = 'date1 date2'
+    optFlags = [['fixup', 'f', 'Do the fixup step, adding metadata to '
+        'calendar items that do not have it'],
+    ]
+    def parseArgs(self, date1, date2):
+        self['dateStart'] = date1
+        self['dateEnd'] = date2
 
     def postOptions(self):
-        email = self['email']
-        pw = getpass(prompt="Password (%s): " % (email,))
+        self.update(self.parent)
+
         d1 = self['dateStart']
         d2 = self['dateEnd']
 
         client = CalendarService()
-        client.password = pw
-        client.email = email
+        client.password = self['password']
+        client.email = self['email']
         client.source = 'TheSoftWorld-Afloat-0.0'
         client.ProgrammaticLogin()
 
         feed = dateQuery(client, self['calendarName'], d1, d2)
 
         for e in feed.entry:
-            try:
-                fixupEvent(client, e)
-            except NoAmountError:
-                pass
+            print e
+            if self['fixup']:
+                try:
+                    fixupEvent(client, e)
+                except NoAmountError:
+                    pass
 
+
+class Options(usage.Options):
+    synopsis = "readcal --connect=calendar//email[//password] <subcommand>"
+    subCommands = [
+        ['get-events', None, GetEvents, 'Get all events in given date range'],
+        ## ['add-event', 'add', AddEvent, 'Add an event'],
+        ## ['remove-event', 'rm', RemoveEvent, 'Remove an event'],
+        ## ['update-event', 'update', UpdateEvent, 'Update an event'],
+    ]
+    optParameters = [
+        ## see opt_connect
+    ]
+
+    def opt_connect(self, connectString):
+        splits = re.split('//', connectString, 2)
+        if len(splits) < 2:
+            raise usage.UsageError("** Invalid connect string")
+
+        calendar = splits.pop(0)
+        self['calendarName'] = CALENDAR_NAMES.get(calendar, calendar)
+        email = self['email'] = splits.pop(0)
+        if splits:
+            self['password'] = splits.pop(0)
+        else:
+            self['password'] = getpass(prompt="Password (%s): " % (email,))
+
+    def postOptions(self):
+        if not self.subCommand:
+            raise usage.UsageError('** Please give a sub-command')
 
 def run(argv=None):
     if argv is None:
