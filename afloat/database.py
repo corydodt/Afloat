@@ -222,7 +222,7 @@ def getGvents(store, **kw):
     # necessary
 
     date1 = datetime.datetime.today() - days(1)
-    date2 = date1 + days(22)
+    date2 = date1 + days(17)
 
     date1 = date1.strftime('%Y-%m-%d')
     date2 = date2.strftime('%Y-%m-%d')
@@ -298,7 +298,7 @@ def days(amount):
 
 def balanceDays(store, account):
     """
-    A BalanceDay for each day in the last 7 including today, and the next 21.
+    A BalanceDay for each day in the last 5 including today, and the next 16.
     Compute by looking at the last transaction-with-balance on each day;
     fill in days with no transactions by carrying over from previous day.
     """
@@ -332,7 +332,7 @@ def balanceDays(store, account):
 
         # now clear the txn if it is not within 6 days, because we only want
         # to see last 7
-        if currentDay < today - days(6):
+        if currentDay < today - days(4):
             del bdays[currentDay]
 
         if currentTomorrow == today:
@@ -353,7 +353,7 @@ def balanceDays(store, account):
 
     lastDay = today
 
-    for n in range(21):
+    for n in range(16):
         currentDay = today + days(n)
         currentBalance = bdays[lastDay].balance
         for txn in froms:

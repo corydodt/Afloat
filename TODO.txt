@@ -10,8 +10,6 @@
 
 Minor:
 
-- pretty up the graphs, values are all bunched together
-
 - show future debits from savings / clean up defaultAccount stuff
 
 - Logo
