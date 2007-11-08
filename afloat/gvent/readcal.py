@@ -62,15 +62,6 @@ def retitleEvent(client, event, new_title):
 ## FIXME - this doesn't work, see 
 ## http://code.google.com/support/bin/answer.py?answer=55839&topic=10365
 ## def cleanEvent(client, event):
-##     """
-##     Remove all extended properties from event
-##     """
-##     event.extended_property = []
-##     href = event.GetEditLink().href
-##     x = client.UpdateEvent(href, event)
-##     reget = getExactEvent(client, href)
-##     assert reget.extended_property == []
-##     return x
 
 def addExtendedProperty(client, event, name, value):
     """
@@ -237,31 +228,6 @@ class CalendarEventString(object):
 ## FIXME - this doesn't work, see
 ## http://code.google.com/support/bin/answer.py?answer=55839&topic=10365
 ## class CleanEvents(usage.Options):
-##     """
-##     Remove all the extended properties within the specified date range,
-##     cleaning the list.
-##     """
-##     synopsis = 'date1 date2'
-##     def parseArgs(self, date1, date2):
-##         self['dateStart'] = date1
-##         self['dateEnd'] = date2
-## 
-##     def postOptions(self):
-##         self.update(self.parent)
-## 
-##         d1 = self['dateStart']
-##         d2 = self['dateEnd']
-## 
-##         client = CalendarService()
-##         client.password = self['password']
-##         client.email = self['email']
-##         client.source = 'TheSoftWorld-Afloat-0.0'
-##         client.ProgrammaticLogin()
-## 
-##         feed = dateQuery(client, self['calendarName'], d1, d2)
-## 
-##         for e in feed.entry:
-##             cleanEvent(client, e)
 
 
 class GetEvents(usage.Options):
