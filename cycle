@@ -44,6 +44,6 @@ while true; do
   echo RUNNING
   twistd ${twistdOptions} afloat ${afloatOptions} <"`safeTty`" &
   # and dnotify blocks waiting for anything to change...
-  dnotify --once --queue=1 ${dnotifyOptions} -e echo MODIFIED: "{}"
+  inotifywait -e modify **/*.py
 done
 
