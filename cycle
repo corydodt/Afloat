@@ -21,7 +21,7 @@ trap killTwistd EXIT
 [ -e ./options.local ] && source ./options.local
 twistdOptions=${twistdOptions:--n --pidfile afloat.pid}
 afloatOptions=${afloatOptions:-}
-dnotifyOptions=${dnotifyOptions:--M $(./sourceFiles)}
+inotifyOptions=${inotifyOptions:--e modify **/*.py}
 
 safeTty() {
     tty="`tty`"
