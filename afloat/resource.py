@@ -161,6 +161,10 @@ class Scheduler(athena.LiveElement):
             pat.fillSlots('amount', '%.2f' % (item.amount/100.,))
             pat.fillSlots('memo', item.title)
             pat.fillSlots('date', item.expectedDate.strftime('%a %m/%d'))
+            if item.paidDate:
+                pat[pat.patternGenerator('statusPaid')()]
+            else:
+                pat[pat.patternGenerator('statusPending')()]
             tag[pat]
         return tag
 

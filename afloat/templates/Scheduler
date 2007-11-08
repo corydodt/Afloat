@@ -7,13 +7,15 @@
     </form>
   </div>
   <div class="schedulerRight">
-    Next 3 weeks:<br />
+    <h3>Next 3 weeks</h3>
     <table>
       <tbody n:render="scheduled">
         <tr n:pattern="upcomingItems">
           <td><strong><n:slot name="amount" /></strong></td>
-          <td><n:slot name="memo" /></td>
+          <td class="memo"><n:slot name="memo" /></td>
           <td><n:slot name="date" /></td>
+          <td n:pattern="statusPaid" class="statusPaid">PAID</td>
+          <td n:pattern="statusPending" class="statusPending">pending</td>
         </tr>
       </tbody>
     </table>

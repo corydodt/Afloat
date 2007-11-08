@@ -1,7 +1,7 @@
 <div xmlns:n="http://nevow.com/ns/nevow/0.1" n:render="liveElement" class=
     "summary">
     <table>
-      <thead><td>Balances:</td><td>Ledger</td><td>Available</td><td /><td /></thead>
+      <thead><td><h3>Balances</h3></td><td>Ledger</td><td>Available</td><td /><td /></thead>
       <tbody n:render="summary">
         <tr n:pattern="balance">
           <td><n:slot name="accountType" /></td>
