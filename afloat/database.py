@@ -69,6 +69,20 @@ class NetworkLog(object):
     description = locals.Unicode()
     severity = locals.Unicode() # OK or ERROR
 
+    @classmethod
+    def log(cls, store, service, severity, description):
+        now = datetime.datetime.today()
+        nl = NetworkLog()
+        nl.eventDateTime = now
+        assert service in ('gvent', 'ofx')
+        nl.service = service
+        nl.description = description
+        assert severity in ('ERROR', 'OK')
+        nl.severity = severity
+
+        store.add(nl)
+        store.commit()
+
 
 def createTables():
     os.system('sqlite3 -echo %s < %s' % (RESOURCE('afloat.db'), RESOURCE('tables.sql'),))
@@ -101,7 +115,6 @@ def getOfx(store, request, **kw):
         ## p.debug = self['debug']
 
         p.feed(ofx)
-        open('/tmp/ofx.ofx', 'wb').write(ofx)
 
         for account in p.banking.accounts.values():
             updateAccount(store, account)
@@ -112,7 +125,7 @@ def getOfx(store, request, **kw):
         # TODO - create storm objects for Holds
         return p.banking
 
-    d.addCallback(gotOfx).addErrback(log.err)
+    d.addCallback(gotOfx)
     return d
 
 def newTransaction(store, accountId, txn):
@@ -246,7 +259,7 @@ def getGvents(store, **kw):
             newScheduledTransaction(store, account, event)
         store.commit()
 
-    d.addBoth(gotGvents, pp).addErrback(log.err)
+    d.addBoth(gotGvents, pp)
     return d
 
 def newScheduledTransaction(store, accountId, event):
@@ -385,6 +398,13 @@ def scheduledNext3Weeks(store, account):
     return  list(found)
 
 
+def matchup():
+    """
+    Flag as paid any scheduled transactions that were found in the register
+    recently, by matching scheduled titles with bank memos, dates and amounts
+    within $0.05
+    """
+    TODO
 
 if __name__ == '__main__':
     createTables()
