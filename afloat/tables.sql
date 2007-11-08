@@ -3,26 +3,26 @@ CREATE TABLE banktxn (
     id VARCHAR PRIMARY KEY,
     account VARCHAR NOT NULL,
     type VARCHAR NOT NULL,
-    amount INT NOT NULL,
+    amount INTEGER NOT NULL,
     userDate DATETIME,
     ledgerDate DATETIME NOT NULL,
     memo VARCHAR NOT NULL,
-    checkNumber INT,
-    ledgerBalance INT
+    checkNumber INTEGER,
+    ledgerBalance INTEGER
 );
 
 CREATE TABLE hold (
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     account VARCHAR NOT NULL,
-    amount INT NOT NULL,
+    amount INTEGER NOT NULL,
     description VARCHAR NOT NULL,
     dateApplied DATETIME
 );
 
 CREATE TABLE scheduledtxn (
     href VARCHAR PRIMARY KEY,
-    bankId INT,
-    amount INT NOT NULL,
+    bankId INTEGER,
+    amount INTEGER NOT NULL,
     title VARCHAR NOT NULL,
     expectedDate DATETIME NOT NULL,
     originalDate DATETIME,
@@ -32,7 +32,7 @@ CREATE TABLE scheduledtxn (
 );
 
 CREATE TABLE networklog (
-    id INT PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     eventDateTime DATETIME,
     service VARCHAR,
     description VARCHAR,
@@ -42,10 +42,10 @@ CREATE TABLE networklog (
 CREATE TABLE account (
     id VARCHAR PRIMARY KEY,
     type VARCHAR,
-    ledgerBalance INT NOT NULL,
+    ledgerBalance INTEGER NOT NULL,
     ledgerAsOfDate DATETIME,
-    availableBalance INT,
+    availableBalance INTEGER,
     availableAsOfDate DATETIME,
-    regulationDCount INT,
-    regulationDMax INT -- maybe always == 6?
+    regulationDCount INTEGER,
+    regulationDMax INTEGER -- maybe always == 6?
 );
