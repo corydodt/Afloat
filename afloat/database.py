@@ -5,7 +5,6 @@ storm tables
 import os
 import datetime
 
-from twisted.python import log
 from twisted.internet import defer, reactor
 from twisted.internet.protocol import ProcessProtocol
 
@@ -53,6 +52,7 @@ class ScheduledTransaction(object):
     href = locals.Unicode(primary=True)
     bankId = locals.Int()
     amount = locals.Int() # cents!
+    checkNumber = locals.Int()
     title = locals.Unicode()
     expectedDate = locals.Date()
     originalDate = locals.Date()
@@ -231,9 +231,6 @@ def getGvents(store, **kw):
 
     pp = GVentProtocol()
 
-    # TODO - d will be called back when process is running, use it if
-    # necessary
-
     date1 = datetime.datetime.today() - days(1)
     date2 = date1 + days(17)
 
@@ -290,6 +287,7 @@ def newScheduledTransaction(store, accountId, event):
 
         schedTxn.amount = int(e.amount)
         schedTxn.title = e.title
+        schedTxn.checkNumber = e.checkNumber
         schedTxn.expectedDate = e.expectedDate
         schedTxn.originalDate = e.originalDate
         schedTxn.paidDate = e.paidDate
@@ -315,6 +313,7 @@ def balanceDays(store, account):
     Compute by looking at the last transaction-with-balance on each day;
     fill in days with no transactions by carrying over from previous day.
     """
+    # do bank transactions first.
     today = datetime.date.today()
     weeksAgo2 = today - days(14)
     txns = store.find(BankTransaction,
@@ -324,6 +323,7 @@ def balanceDays(store, account):
                 )).order_by(BankTransaction.ledgerDate)
     txns = list(txns)
 
+    # create balance days for each bank txn
     bdays = {}
     for t in txns:
         bdays[t.ledgerDate] = BalanceDay(t.ledgerDate, t.ledgerBalance)
@@ -353,15 +353,19 @@ def balanceDays(store, account):
 
         currentDay = currentTomorrow
 
-    # TODO - matchups
 
-    froms = scheduledNext3Weeks(store, account)
+    # Get the scheduled gvent transactions now and apply them.
+    # For balance purposes, skip any transactions that were PAID.
+
+    froms = [t for t in scheduledNext3Weeks(store, account) 
+            if t.paidDate is None]
 
     tos = []
     for txn in froms:
         if txn.toAccount is not None:
             tos.append(txn.href)
 
+    # True, if there is both a fromDate and toDate
     hasToAccount = lambda t: t.href in tos
 
     lastDay = today
@@ -398,13 +402,14 @@ def scheduledNext3Weeks(store, account):
     return  list(found)
 
 
-def matchup():
+def matchup(store):
     """
     Flag as paid any scheduled transactions that were found in the register
     recently, by matching scheduled titles with bank memos, dates and amounts
     within $0.05
     """
     TODO
+
 
 if __name__ == '__main__':
     createTables()
