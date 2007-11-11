@@ -25,6 +25,8 @@ EVENT_AMOUNT = 'http://thesoftworld.com/2007/afloat#amount'
 EVENT_FROMACCOUNT = 'http://thesoftworld.com/2007/afloat#fromAccount'
 # afloat#toAccount ; value: string account number
 EVENT_TOACCOUNT = 'http://thesoftworld.com/2007/afloat#toAccount'
+# afloat#checkNumber ; value: string account number
+EVENT_CHECKNUMBER = 'http://thesoftworld.com/2007/afloat#checkNumber'
 
 
 class NoAmountError(Exception):
@@ -153,6 +155,8 @@ def formatEventString(event):
 # functions for parsing the content of a calendar entry
 dollarRx = re.compile(r'^\$-?[0-9]+(\.[0-9]+)?$')
 noDollarRx = re.compile(r'^-?[0-9]+(\.[0-9]+)?$')
+checkRx = re.compile(r'#\d+\b')
+bracketRx = re.compile(r'\[.*\]')
 
 def findAccounts(s):
     """
@@ -178,6 +182,20 @@ def findAmount(s):
         if noDollarRx.match(word):
             return int(float(word)*100)
 
+def findCheckNumber(s):
+    """
+    Return the check number if any
+    """
+    words = s.split()
+    for word in words:
+        if checkRx.match(word):
+            return word
+
+
+def cleanEventTitle(event):
+    return bracketRx.sub('', event.title.text)
+    
+
 def fixupEvent(client, event):
     """
     Parse numerics in event's title and set extended amount attribute on
@@ -187,13 +205,25 @@ def fixupEvent(client, event):
     """
     changed = 0
     propsFound = [x.name for x in event.extended_property]
+
+    # remove [comments inside brackets] before processing the event
+    titleText = cleanEventTitle(event)
+
     if EVENT_AMOUNT not in propsFound:
-        amount = findAmount(event.title.text)
+        amount = findAmount(titleText)
         if amount is None:
-            raise NoAmountError(event.title.text)
+            raise NoAmountError(titleText)
         prop = calendar.ExtendedProperty(name=EVENT_AMOUNT, value=str(amount))
         event.extended_property.append(prop)
         changed = 1
+
+    ## if EVENT_CHECKNUMBER not in propsFound:
+    cn = findCheckNumber(titleText)
+    if cn is not None:
+        prop = calendar.ExtendedProperty(name=EVENT_CHECKNUMBER, value=str(cn))
+        event.extended_property.append(prop)
+        changed = 1
+
     if EVENT_TOACCOUNT not in propsFound and event.content.text:
         fromAccount, toAccount = findAccounts(event.content.text)
         if toAccount is not None:
@@ -224,12 +254,17 @@ class CalendarEventString(object):
     """
     A marshallable, trivially parseable form of a calendar event
     """
-    def __init__(self, href, title, paidDate, bankId, originalDate,
-            expectedDate, amount, fromAccount, toAccount, ):
+    def __init__(self, href, title, paidDate, bankId, checkNumber,
+            originalDate, expectedDate, amount, fromAccount, toAccount, ):
         coalesce = lambda x: (None if not x else unicode(x))
+
         self.href = unicode(href)
         self.title = unicode(title)
         self.paidDate = parseDateYMD(paidDate)
+        if checkNumber is not None:
+            self.checkNumber = int(checkNumber.lstrip('#'))
+        else:
+            self.checkNumber = None
         self.bankId = coalesce(bankId)
         self.originalDate = parseDateYMD(originalDate)
         self.expectedDate = parseDateYMD(expectedDate)
@@ -238,11 +273,12 @@ class CalendarEventString(object):
         self.toAccount = coalesce(toAccount)
 
     def __str__(self):
-        ret = "%s %s %s %s %s %s %s %s %s" % (
+        ret = "%s %s %s %s %s %s %s %s %s %s" % (
             self.href,
             re.sub('\s+', '+', self.title),
             formatDateYMD(self.paidDate) or '~',
             self.bankId or '~',
+            self.checkNumber or '~',
             formatDateYMD(self.originalDate),
             formatDateYMD(self.expectedDate),
             self.amount,
@@ -254,7 +290,7 @@ class CalendarEventString(object):
     @classmethod
     def fromString(cls, s):
         splits = s.split()
-        href, title, paidDate, bankId, originalDate, expectedDate, amount, fromAccount, toAccount = splits
+        href, title, paidDate, bankId, checkNumber, originalDate, expectedDate, amount, fromAccount, toAccount = splits
 
         parseTilde = lambda x: (None if x == '~' else x)
 
@@ -262,6 +298,7 @@ class CalendarEventString(object):
                 ' '.join(title.split('+')),
                 parseTilde(paidDate),
                 parseTilde(bankId),
+                parseTilde(checkNumber),
                 originalDate,
                 expectedDate,
                 amount,
@@ -400,6 +437,34 @@ def parseDateYMD(s):
     if s is None:
         return None
     return datetime.datetime.strptime(s, '%Y-%m-%d')
+
+
+def parseKeywords(s):
+    """
+    Split into keywords, removing check numbers and money amounts
+    """
+    words = s.split()
+    retWords = dict(enumerate(words))
+
+    # check first for anything with a $ as the amount.
+    # if that doesn't work, then check for any number as the amount.
+    # if we found an amount, remove it.
+    foundAmount = 0
+    for n, word in retWords.items():
+        if dollarRx.match(word) and not foundAmount:
+            foundAmount = 1
+            del retWords[n]
+        if checkRx.match(word):
+            del retWords[n]
+
+    if not foundAmount:
+        for n, word in retWords.items():
+            if noDollarRx.match(word):
+                foundAmount = 1
+                del retWords[n]
+                break
+
+    return zip(*sorted(retWords.items()))[1]
 
 
 class Options(usage.Options):
