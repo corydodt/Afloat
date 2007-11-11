@@ -41,6 +41,9 @@ class MissingToAccount(Exception):
     """
 
 
+def deleteExactEvent(client, uri):
+    return client.DeleteEvent(uri)
+
 def getExactEvent(client, uri):
     return client.GetCalendarEventEntry(uri)
 
@@ -217,25 +220,25 @@ def fixupEvent(client, event):
         event.extended_property.append(prop)
         changed = 1
 
-    ## if EVENT_CHECKNUMBER not in propsFound:
-    cn = findCheckNumber(titleText)
-    if cn is not None:
-        prop = calendar.ExtendedProperty(name=EVENT_CHECKNUMBER, value=str(cn))
-        event.extended_property.append(prop)
-        changed = 1
+    if EVENT_CHECKNUMBER not in propsFound:
+        cn = findCheckNumber(titleText)
+        if cn is not None:
+            prop = calendar.ExtendedProperty(name=EVENT_CHECKNUMBER, value=str(cn))
+            event.extended_property.append(prop)
+            changed = 1
 
     if EVENT_TOACCOUNT not in propsFound and event.content.text:
         fromAccount, toAccount = findAccounts(event.content.text)
         if toAccount is not None:
             prop = calendar.ExtendedProperty(name=EVENT_TOACCOUNT,
-                    value=toAccount)
+                    value=toAccount.upper().strip())
             event.extended_property.append(prop)
             changed = 1
         if fromAccount is not None:
             if toAccount is None:
                 raise MissingToAccount(event)
             prop = calendar.ExtendedProperty(name=EVENT_FROMACCOUNT,
-                    value=fromAccount)
+                    value=fromAccount.upper().strip())
             event.extended_property.append(prop)
 
     if EVENT_ORIGINALDATE not in propsFound:
@@ -336,7 +339,7 @@ class GetEvents(usage.Options):
             # fixup done on them at some point in the past)
             if self['show-unclean']:
                 if e.extended_property:
-                    print >> sys.stderr, e.title.text
+                    print >> sys.stderr, e.title.text, e.GetEditLink().href
                     print >> sys.stderr, '  ', [(x.name, x.value) for x in e.extended_property]
                 continue
 
@@ -424,6 +427,32 @@ class AddEvent(usage.Options):
         return formatEventString(ev)
 
 
+class RemoveEvent(usage.Options):
+    """
+    Remove a single event
+    """
+    optFlags = []
+    def parseArgs(self, uri):
+        self['uri'] = uri
+
+    def postOptions(self):
+        self.update(self.parent)
+
+        # connect and pull all the events from google calendar
+        client = CalendarService()
+        print self.removeEvent(client)
+
+    def removeEvent(self, client):
+        client.password = self['password']
+        client.email = self['email']
+        client.source = 'TheSoftWorld-Afloat-0.0'
+        client.ProgrammaticLogin()
+
+        ev = deleteExactEvent(client, self['uri'])
+
+        return formatEventString(ev)
+
+
 def formatDateYMD(dt):
     if dt is None:
         return None
@@ -473,7 +502,7 @@ class Options(usage.Options):
         ['get-events', None, GetEvents, 'Get all events in given date range'],
         ['scrub-events', None, ScrubEvents, 'Remove extended properties from events in range'],
         ['add-event', 'add', AddEvent, 'Add an event using quick-add'],
-        ## ['remove-event', 'rm', RemoveEvent, 'Remove an event - TODO - break recurrence if necessary'],
+        ['remove-event', 'rm', RemoveEvent, 'Remove an event - TODO - break recurrence if necessary'],
         ## ['update-event', 'update', UpdateEvent, 'Update an event - TODO - break recurrence if necessary'],
     ]
     optParameters = [
