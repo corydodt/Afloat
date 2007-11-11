@@ -156,7 +156,7 @@ def formatEventString(event):
 dollarRx = re.compile(r'^\$-?[0-9]+(\.[0-9]+)?$')
 noDollarRx = re.compile(r'^-?[0-9]+(\.[0-9]+)?$')
 checkRx = re.compile(r'#\d+\b')
-bracketRx = re.compile(r'\[.*\]')
+bracketRx = re.compile(r'\[.*?\]')
 
 def findAccounts(s):
     """
