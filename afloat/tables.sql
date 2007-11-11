@@ -23,6 +23,7 @@ CREATE TABLE scheduledtxn (
     href VARCHAR PRIMARY KEY,
     bankId INTEGER,
     amount INTEGER NOT NULL,
+    checkNumber INTEGER,
     title VARCHAR NOT NULL,
     expectedDate DATETIME NOT NULL,
     originalDate DATETIME,
