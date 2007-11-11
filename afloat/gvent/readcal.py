@@ -38,6 +38,7 @@ class MissingToAccount(Exception):
     a From account doesn't have a To account.
     """
 
+
 def getExactEvent(client, uri):
     return client.GetCalendarEventEntry(uri)
 
@@ -59,22 +60,15 @@ def retitleEvent(client, event, new_title):
         previous_title, event.title.text,)
     return client.UpdateEvent(event.GetEditLink().href, event)
 
-## FIXME - this doesn't work, see 
-## http://code.google.com/support/bin/answer.py?answer=55839&topic=10365
-## def cleanEvent(client, event):
-
-def addExtendedProperty(client, event, name, value):
+def dateQuery(client, calendarName, start_date, end_date):
     """
-    Adds an arbitrary name/value pair to the event.  This value is only
-    exposed through the API.  Extended properties can be used to store extra
-    information needed by your application.  The recommended format is used as
-    the default arguments above.  The use of the URL format is to specify a
-    namespace prefix to avoid collisions between different applications.
+    Retrieves events from the server which occur during the specified date
+    range.
     """
-    event.extended_property.append(
-        calendar.ExtendedProperty(name=name, value=value))
-    print 'Adding extended property to event: \'%s\'=\'%s\'' % (name, value,)
-    return client.UpdateEvent(event.GetEditLink().href, event)
+    query = CalendarEventQuery(calendarName, 'private', 'full')
+    query.start_min = start_date
+    query.start_max = end_date
+    return client.CalendarQuery(query)
 
 def deleteEvent(client, event):
     """
@@ -97,6 +91,66 @@ def quickAddEvent(client, calendarName, content="Tennis with John today 3pm-3:30
         '/calendar/feeds/%s/private/full' % (calendarName,))
     return new_event
 
+def copyEvent(client, calendarName, event):
+    new1 = calendar.CalendarEventEntry()
+    new1.author = event.author
+    new1.category = event.category
+    new1.comments = event.comments
+    new1.content = event.content
+    new1.contributor = event.contributor
+    new1.control = event.control
+    new1.event_status = event.event_status
+    new1.original_event = event.original_event
+    new1.published = event.published
+    new1.recurrence = event.recurrence
+    new1.rights = event.rights
+    new1.source = event.source
+    new1.summary = event.summary
+    new1.text = event.text
+    new1.title = event.title
+    new1.transparency = event.transparency
+    new1.updated = event.updated
+    new1.visibility = event.visibility
+    new1.when = event.when
+    new1.where = event.where
+    new1.who = event.who
+    return client.InsertEvent(new1,
+        '/calendar/feeds/%s/private/full' % (calendarName,))
+
+def formatEventString(event):
+    e = event
+    eProps = {}
+    for prop in e.extended_property:
+        eProps[prop.name] = prop.value
+    get = lambda k: eProps.get(k)
+    href = e.GetSelfLink().href
+
+    # skip over special events created when you break a recurring
+    # event  (??)
+    if e.original_event is not None:
+        return
+
+    ret = []
+    for when in e.when:
+        ret.append(
+                str(CalendarEventString(href,
+                    e.title.text,
+                    get(EVENT_PAID),
+                    get(EVENT_BANKID),
+                    get(EVENT_CHECKNUMBER),
+                    get(EVENT_ORIGINALDATE),
+                    when.start_time,
+                    get(EVENT_AMOUNT),
+                    get(EVENT_FROMACCOUNT),
+                    get(EVENT_TOACCOUNT),
+                    )
+                )
+            )
+
+    return '\n'.join(ret)
+
+
+# functions for parsing the content of a calendar entry
 dollarRx = re.compile(r'^\$-?[0-9]+(\.[0-9]+)?$')
 noDollarRx = re.compile(r'^-?[0-9]+(\.[0-9]+)?$')
 
@@ -136,7 +190,7 @@ def fixupEvent(client, event):
     if EVENT_AMOUNT not in propsFound:
         amount = findAmount(event.title.text)
         if amount is None:
-            raise NoAmountError(event)
+            raise NoAmountError(event.title.text)
         prop = calendar.ExtendedProperty(name=EVENT_AMOUNT, value=str(amount))
         event.extended_property.append(prop)
         changed = 1
@@ -153,6 +207,7 @@ def fixupEvent(client, event):
             prop = calendar.ExtendedProperty(name=EVENT_FROMACCOUNT,
                     value=fromAccount)
             event.extended_property.append(prop)
+
     if EVENT_ORIGINALDATE not in propsFound:
         # FIXME - just setting this HAS to break recurrence because
         # there will be a separate ORIGINALDATE for each one
@@ -163,17 +218,6 @@ def fixupEvent(client, event):
 
     if changed:
         client.UpdateEvent(event.GetEditLink().href, event)
-
-
-def dateQuery(client, calendarName, start_date, end_date):
-    """
-    Retrieves events from the server which occur during the specified date
-    range.
-    """
-    query = CalendarEventQuery(calendarName, 'private', 'full')
-    query.start_min = start_date
-    query.start_max = end_date
-    return client.CalendarQuery(query)
 
 
 class CalendarEventString(object):
@@ -210,31 +254,27 @@ class CalendarEventString(object):
     @classmethod
     def fromString(cls, s):
         splits = s.split()
-        assert len(splits) == 9
+        href, title, paidDate, bankId, originalDate, expectedDate, amount, fromAccount, toAccount = splits
+
         parseTilde = lambda x: (None if x == '~' else x)
-        new1 = cls( splits[0],
-                ' '.join(splits[1].split('+')),
-                parseTilde(splits[2]),
-                parseTilde(splits[3]),
-                splits[4],
-                splits[5],
-                splits[6],
-                parseTilde(splits[7]),
-                parseTilde(splits[8]),
+
+        new1 = cls( href,
+                ' '.join(title.split('+')),
+                parseTilde(paidDate),
+                parseTilde(bankId),
+                originalDate,
+                expectedDate,
+                amount,
+                parseTilde(fromAccount),
+                parseTilde(toAccount),
                 )
         return new1
-
-
-## FIXME - this doesn't work, see
-## http://code.google.com/support/bin/answer.py?answer=55839&topic=10365
-## class CleanEvents(usage.Options):
 
 
 class GetEvents(usage.Options):
     """
     Print the events as a list of them, fields separated by spaces
     """
-    synopsis = 'date1 date2'
     optFlags = [['fixup', 'f', 'Do the fixup step, adding metadata to '
         'calendar items that do not have it'],
         ['show-unclean', None, 'Show events that have extended properties',],
@@ -249,49 +289,102 @@ class GetEvents(usage.Options):
         d1 = self['dateStart']
         d2 = self['dateEnd']
 
+        # connect and pull all the events from google calendar
         client = CalendarService()
-        client.password = self['password']
-        client.email = self['email']
-        client.source = 'TheSoftWorld-Afloat-0.0'
-        client.ProgrammaticLogin()
+        feed = self.getEvents(client, d1, d2)
 
-        feed = dateQuery(client, self['calendarName'], d1, d2)
-
+        # process each event according to command-line options
         for e in feed.entry:
+            # show events that have any extended properties (these have had
+            # fixup done on them at some point in the past)
             if self['show-unclean']:
                 if e.extended_property:
-                    print e.title.text
-                    print '  ', [(x.name, x.value) for x in e.extended_property]
+                    print >> sys.stderr, e.title.text
+                    print >> sys.stderr, '  ', [(x.name, x.value) for x in e.extended_property]
                 continue
 
+            # fixup events if dictated
             if self['fixup']:
                 try:
                     fixupEvent(client, e)
                 except NoAmountError:
                     pass
 
-            eProps = {}
-            for prop in e.extended_property:
-                eProps[prop.name] = prop.value
-            get = lambda k: eProps.get(k)
-            href = e.GetSelfLink().href
+            # print the event for other programs to parse
+            print formatEventString(e)
 
-            # skip over special events created when you break a recurring
-            # event  (??)
-            if e.original_event is not None:
-                continue
+    def getEvents(self, client, date1, date2):
+        client.password = self['password']
+        client.email = self['email']
+        client.source = 'TheSoftWorld-Afloat-0.0'
+        client.ProgrammaticLogin()
 
-            for when in e.when:
-                print CalendarEventString(href,
-                        e.title.text,
-                        get(EVENT_PAID),
-                        get(EVENT_BANKID),
-                        get(EVENT_ORIGINALDATE),
-                        when.start_time,
-                        get(EVENT_AMOUNT),
-                        get(EVENT_FROMACCOUNT),
-                        get(EVENT_TOACCOUNT),
-                        )
+        return dateQuery(client, self['calendarName'], date1, date2)
+
+
+class ScrubEvents(GetEvents):
+    """
+    Remove all events and re-insert them without extended properties
+    """
+    optFlags = []
+    def parseArgs(self, date1, date2):
+        self['dateStart'] = date1
+        self['dateEnd'] = date2
+
+    def postOptions(self):
+        self.update(self.parent)
+
+        d1 = self['dateStart']
+        d2 = self['dateEnd']
+
+        # connect and pull all the events from google calendar
+        client = CalendarService()
+        feed = self.getEvents(client, d1, d2)
+
+        # process each event according to command-line options
+        for e in feed.entry:
+            if e.extended_property:
+                # print the event for other programs to parse
+                self.scrubEvent(client, e)
+
+    def scrubEvent(self, client, event):
+        """
+        Replace an event.  Keep all when, title, and body attributes.  Do
+        not set any extended properties.
+        """
+        if event.original_event:
+            return
+        new1 = copyEvent(client, self['calendarName'], event)
+        deleteEvent(client, event)
+
+
+class AddEvent(usage.Options):
+    """
+    Add a single event
+    """
+    optFlags = []
+    def parseArgs(self, content ):
+        self['content'] = content
+
+    def postOptions(self):
+        self.update(self.parent)
+
+        # connect and pull all the events from google calendar
+        client = CalendarService()
+        print self.addEvent(client)
+
+    def addEvent(self, client):
+        client.password = self['password']
+        client.email = self['email']
+        client.source = 'TheSoftWorld-Afloat-0.0'
+        client.ProgrammaticLogin()
+
+        ev = quickAddEvent(client, self['calendarName'], self['content'])
+
+        # always use fixup on new events before formatting them
+        fixupEvent(client, ev)
+
+        return formatEventString(ev)
 
 
 def formatDateYMD(dt):
@@ -313,8 +406,8 @@ class Options(usage.Options):
     synopsis = "readcal --connect=calendar//email[//password] <subcommand>"
     subCommands = [
         ['get-events', None, GetEvents, 'Get all events in given date range'],
-        ## ['clean-events', None, CleanEvents, 'Remove extended properties from all events'],
-        ## ['add-event', 'add', AddEvent, 'Add an event'],
+        ['scrub-events', None, ScrubEvents, 'Remove extended properties from events in range'],
+        ['add-event', 'add', AddEvent, 'Add an event using quick-add'],
         ## ['remove-event', 'rm', RemoveEvent, 'Remove an event - TODO - break recurrence if necessary'],
         ## ['update-event', 'update', UpdateEvent, 'Update an event - TODO - break recurrence if necessary'],
     ]
