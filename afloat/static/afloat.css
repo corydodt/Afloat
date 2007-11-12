@@ -52,6 +52,7 @@ body {
     margin-left: 1em;
     border-left: 1px solid #618059;
     padding-left: 1em;
+    font-size: 8.5pt;
 }
 
 .schedulerRight td
@@ -65,14 +66,14 @@ body {
     text-align: left;
 }
 
-.SchedulerLeft
+.schedulerLeft
 {
     float: left;
-    width: 350px;
+    width: 320px;
 }
 .schedulerLeft input
 {
-    width: 350px;
+    width: 320px;
 }
 
 .summary
@@ -150,4 +151,9 @@ body {
 h1, h2, h3, h4 {
     color: #618059;
     margin-top: 3pt; margin-bottom: 3pt;
+}
+
+.deposit {
+    color: #647D8F;
+    font-weight: bold;
 }

@@ -164,10 +164,14 @@ class Scheduler(athena.LiveElement):
 
     @page.renderer
     def scheduled(self, req, tag):
-        pg = tag.patternGenerator("upcomingItems")
+        pgDebit = tag.patternGenerator("upcomingDebit")
+        pgDeposit = tag.patternGenerator("upcomingDeposit")
         coming = self.report.upcomingScheduled()
         for item in coming:
-            pat = pg()
+            if item.amount >= 0:
+                pat = pgDeposit()
+            else:
+                pat = pgDebit()
             pat.fillSlots('amount', '%.2f' % (item.amount/100.,))
             pat.fillSlots('memo', item.title)
             pat.fillSlots('date', item.expectedDate.strftime('%a %m/%d'))
