@@ -21,7 +21,7 @@ CREATE TABLE hold (
 
 CREATE TABLE scheduledtxn (
     href VARCHAR PRIMARY KEY,
-    bankId INTEGER,
+    bankId VARCHAR,
     amount INTEGER NOT NULL,
     checkNumber INTEGER,
     title VARCHAR NOT NULL,

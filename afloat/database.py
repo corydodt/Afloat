@@ -11,7 +11,7 @@ from twisted.internet.protocol import ProcessProtocol
 from storm import locals
 
 from afloat.util import RESOURCE
-from afloat.gvent.readcal import CalendarEventString
+from afloat.gvent.readcal import CalendarEventString, parseKeywords
 
 class BankTransaction(object):
     __storm_table__ = 'banktxn'
@@ -50,7 +50,7 @@ class Hold(object):
 class ScheduledTransaction(object):
     __storm_table__ = 'scheduledtxn'
     href = locals.Unicode(primary=True)
-    bankId = locals.Int()
+    bankId = locals.Unicode()
     amount = locals.Int() # cents!
     checkNumber = locals.Int()
     title = locals.Unicode()
@@ -255,6 +255,9 @@ def getGvents(store, **kw):
         for event in proto.gvents:
             newScheduledTransaction(store, account, event)
         store.commit()
+        
+        # TODO - log a warning and remove a scheduledtxn if an event we
+        # previously recorded has disappeared from gvents
 
     d.addBoth(gotGvents, pp)
     return d
@@ -374,7 +377,8 @@ def balanceDays(store, account):
         currentDay = today + days(n)
         currentBalance = bdays[lastDay].balance
         for txn in froms:
-            # if there is a TO ACCOUNT, then the FROM account is a debit
+            # if there is a TO ACCOUNT, then the FROM account is a debit (and
+            # this is a transfer transaction)
             adjustedAmount = (txn.amount if not hasToAccount(txn) else -txn.amount)
             if txn.expectedDate == currentDay:
                 currentBalance = currentBalance + adjustedAmount
@@ -407,8 +411,76 @@ def matchup(store):
     Flag as paid any scheduled transactions that were found in the register
     recently, by matching scheduled titles with bank memos, dates and amounts
     within $0.05
+
+    Next, bubble forward any unmatched transactions; for LATE
+    transactions, remember to ask the user next time for a confirmation or
+    delete.
+
+    Finally fix these items in the google database, setting extended properties
+    and titles appropriately.
     """
-    TODO
+    pendings = store.find(ScheduledTransaction, 
+            ScheduledTransaction.paidDate == None)
+    for pending in pendings:
+        matched = tryMatch(store, pending)
+        if matched:
+            pending.paidDate = matched.ledgerDate
+            print 'found a match on "%s" == "%s"' % (
+                    pending.title, matched.memo)
+            ## TODO.. fix in google database
+            ##  1. add [PAID] to title
+            ##  2. add paidDate
+            ##  3. adjust amount to match ledger exactly, if needed
+            ## TODO.. adjust amount in sql database
+        else:
+            continue
+    store.commit()
+
+    ## TODO.. bubble txns forward and flag LATE txns
+
+
+def tryMatch(store, schedtxn):
+    """
+    For one scheduled transaction, try to match it with any bank transaction
+    """
+    mydate = schedtxn.expectedDate
+    myamount = schedtxn.amount
+
+    todayTxns = store.find(BankTransaction, 
+            BankTransaction.ledgerDate == mydate)
+
+    # look at check numbers first to shortcut
+    if schedtxn.checkNumber:
+        for txn in todayTxns:
+            if txn.checkNumber == schedtxn.checkNumber:
+                return txn
+        return None
+
+    for txn in todayTxns:
+        ST = ScheduledTransaction
+
+        # skip any transaction that already has a corresponding paid
+        # scheduledTxn
+        if store.find(ST, ST.bankId == txn.id).count() > 0:
+            continue
+
+        # skip any that don't match within $0.05
+        if abs(txn.amount - schedtxn.amount) > 5:
+            continue
+
+        # split into words and remove money amounts, then look at the memo. we
+        # should match all words.
+        txnWords = txn.memo.split()
+        matchCount = 0
+        myWords = parseKeywords(txn.memo)
+        for kw in myWords:
+            if kw in txnWords:
+                matchCount += 1
+        # all words found? this is the txn.
+        if matchCount == len(myWords):
+            return txn
+
+        # TODO (maybe) - more probability-based, search-like matching
 
 
 if __name__ == '__main__':

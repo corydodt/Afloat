@@ -72,7 +72,8 @@ class AfloatService(internet.TCPServer):
 
     def doRequests(self):
         """
-        Run all the network requests for OFX data and gvents
+        Run all the network requests for OFX data and gvents, then match the
+        two different kinds of transactions
         """
         c = self.config
         self.defaultAccount = c['defaultAccount']
@@ -117,5 +118,9 @@ class AfloatService(internet.TCPServer):
 
         self._requestsDone = defer.DeferredList([self._ofxDeferred,
             self._gventDeferred,], fireOnOneErrback=True)
-        # TODO  self._requestsDone.addCallback(database.matchup)
+
+        # finally match them up, so gvents can get marked PAID
+        self._requestsDone.addCallback(
+                lambda _: database.matchup(self.store))
+        self._requestsDone.addErrback(log.err)
 
