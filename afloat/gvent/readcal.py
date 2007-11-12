@@ -1,6 +1,5 @@
 import sys
 import re
-from getpass import getpass
 import datetime
 import md5
 
