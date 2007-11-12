@@ -12,3 +12,5 @@ Minor:
 - show future debits from savings / clean up defaultAccount stuff
 
 - Logo
+
+- Make readcal read from config.py, like ofx.get does
