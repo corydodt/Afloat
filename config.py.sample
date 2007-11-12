@@ -19,3 +19,5 @@ gventPassword = 'xxxx'
 gventCalendar = 'bd7j228bh3984723fd0x8dhf50@group.calendar.google.com'
 
 downloadTimes = ['06:00', '18:00', ]
+
+debug = 0

@@ -168,8 +168,7 @@ class AfloatReport(object):
             from afloat.ofx.parse import OFXParser
             p = OFXParser()
             p.encoding = encoding
-            # TODO - get passed-in self['debug'] ?
-            ## p.debug = self['debug']
+            p.debug = self.config['debug']
 
             p.feed(ofx)
 
