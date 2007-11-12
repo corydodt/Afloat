@@ -212,7 +212,7 @@ class AfloatReport(object):
 
     def getGvents(self, **kw):
         """
-        Run module afloat.gvent as a python process
+        Retrieve gvents from afloat.gvent.protocol
         """
         account = kw['account']
 
@@ -224,10 +224,24 @@ class AfloatReport(object):
         def gotGvents(gvents):
             for event in gvents:
                 self.newScheduledTransaction(account, event)
-            self.store.commit()
+            gventSet = set([g.href for g in gvents])
             
-            # TODO - log a warning and remove a scheduledtxn if an event we
-            # previously recorded has disappeared from gvents
+            # Look for scheduledtxn items that have disappeared from the
+            # google feed; these should be removed from scheduledtxn
+            log.msg("CHECKING FOR REMOVED GVENTS")
+            ST = ScheduledTransaction
+            scheduled = self.store.find(ST, locals.And( ST.expectedDate >=
+                date1, ST.expectedDate <= date2))
+            schedSet = set([s.href for s in scheduled])
+
+            removedSet = schedSet - gventSet
+            for sched in scheduled:
+                if sched.href in removedSet:
+                    log.msg("*** TRANSACTION DISAPPEARED: %s %s" %
+                            (sched.expectedDate, sched.title))
+                    self.store.remove(sched)
+
+            self.store.commit()
 
         d.addCallback(gotGvents)
         return d
