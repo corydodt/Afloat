@@ -2,31 +2,44 @@ import sys
 import re
 from getpass import getpass
 import datetime
+import md5
 
 from twisted.python import usage
 
 import atom
 from gdata.calendar.service import CalendarEventQuery, CalendarService
 from gdata import calendar
+from gdata.service import RequestError
 
 CALENDAR_NAMES = {
         'finance': 'bd7j228bhdt527n0o4pk8dhf50@group.calendar.google.com'
 }
 
+AFLOAT_NS = 'http://thesoftworld.com/2007/afloat#'
+
+def uu(key):
+    """
+    A short uuid for google events keys
+    """
+
+    ret = '%s-%s' % (md5.md5(AFLOAT_NS + key).hexdigest(), key)
+    assert len(ret) < 45, "Google extended_property keys cannot be that long: %s" % (ret,)
+    return ret
+
 # afloat#paid ; value: a datetime that indicates when it was paid
-EVENT_PAID = 'http://thesoftworld.com/2007/afloat#paid'
+EVENT_PAID = uu('paid')
 # afloat#bankId ; value: a string that matches a bank trnid
-EVENT_BANKID = 'http://thesoftworld.com/2007/afloat#bankId'
+EVENT_BANKID = uu('bankId')
 # afloat#originalDate ; value: a datetime that indicates the user-entered date
-EVENT_ORIGINALDATE = 'http://thesoftworld.com/2007/afloat#originalDate'
+EVENT_ORIGINALDATE = uu('origDate')
 # afloat#amount ; value: an integer (cents.. divide by 100 for dollars)
-EVENT_AMOUNT = 'http://thesoftworld.com/2007/afloat#amount'
+EVENT_AMOUNT = uu('amount')
 # afloat#fromAccount ; value: string account number
-EVENT_FROMACCOUNT = 'http://thesoftworld.com/2007/afloat#fromAccount'
+EVENT_FROMACCOUNT = uu('fromAcct')
 # afloat#toAccount ; value: string account number
-EVENT_TOACCOUNT = 'http://thesoftworld.com/2007/afloat#toAccount'
+EVENT_TOACCOUNT = uu('toAcct')
 # afloat#checkNumber ; value: string account number
-EVENT_CHECKNUMBER = 'http://thesoftworld.com/2007/afloat#checkNumber'
+EVENT_CHECKNUMBER = uu('checkNum')
 
 
 class NoAmountError(Exception):
@@ -46,24 +59,6 @@ def deleteExactEvent(client, uri):
 
 def getExactEvent(client, uri):
     return client.GetCalendarEventEntry(uri)
-
-def retitleEvent(client, event, new_title):
-    """Updates the title of the specified event with the specified new_title.
-    Note that the UpdateEvent method (like InsertEvent) returns the
-    CalendarEventEntry object based upon the data returned from the server
-    after the event is inserted.  This represents the 'official' state of
-    the event on the server.  The 'edit' link returned in this event can
-    be used for future updates.  Due to the use of the 'optimistic concurrency'
-    method of version control, most GData services do not allow you to send
-    multiple update requests using the same edit URL.  Please see the docs:
-    http://code.google.com/apis/gdata/reference.html#Optimistic-concurrency
-    """
-
-    previous_title = event.title.text
-    event.title.text = new_title
-    print 'Updating title of event from:\'%s\' to:\'%s\'' % (
-        previous_title, event.title.text,)
-    return client.UpdateEvent(event.GetEditLink().href, event)
 
 def dateQuery(client, calendarName, start_date, end_date):
     """
@@ -349,6 +344,12 @@ class GetEvents(usage.Options):
                     fixupEvent(client, e)
                 except NoAmountError:
                     pass
+                except RequestError:
+                    # Instances of recurring events may have cruft and
+                    # gremlins. Ignore errors on them.  Raise on others.
+                    if e.original_event:
+                        continue
+                    raise
 
             # print the event for other programs to parse
             print formatEventString(e)
@@ -453,6 +454,64 @@ class RemoveEvent(usage.Options):
         return formatEventString(ev)
 
 
+class UpdateEvent(usage.Options):
+    """
+    Update an event per the command-line options
+    """
+    optFlags = []
+    optParameters = [
+            ['paidDate', None, None, 'Change the paidDate',],
+            ['amount', None, None, 'Change the amount',],
+            ['title', None, None, 'Change the title',],
+            ['expectedDate', None, None, 'Change the expectedDate',],
+            ]
+    def parseArgs(self, uri):
+        self['uri'] = uri
+
+    def postOptions(self):
+        self.update(self.parent)
+
+        # connect and pull all the events from google calendar
+        client = CalendarService()
+        print self.updateEvent(client)
+
+    def updateEvent(self, client):
+        client.password = self['password']
+        client.email = self['email']
+        client.source = 'TheSoftWorld-Afloat-0.0'
+        client.ProgrammaticLogin()
+
+        ev = getExactEvent(client, self['uri'])
+
+        changed = 0
+
+        if self['paidDate']:
+            prop = calendar.ExtendedProperty(name=EVENT_PAID, 
+                    value=self['paidDate'])
+            ev.extended_property.append(prop)
+            changed = 1
+
+        if self['amount']:
+            prop = calendar.ExtendedProperty(name=EVENT_AMOUNT, 
+                    value=self['amount'])
+            ev.extended_property.append(prop)
+            changed = 1
+
+        if self['expectedDate']:
+            import pdb; pdb.set_trace()
+            # TODO - change event.when
+            changed = 1
+
+        if self['title']:
+            ev.title.text = self['title']
+            changed = 1
+
+        if changed:
+            client.UpdateEvent(ev.GetEditLink().href, ev)
+
+        return formatEventString(ev)
+
+
 def formatDateYMD(dt):
     if dt is None:
         return None
@@ -501,9 +560,9 @@ class Options(usage.Options):
     subCommands = [
         ['get-events', None, GetEvents, 'Get all events in given date range'],
         ['scrub-events', None, ScrubEvents, 'Remove extended properties from events in range'],
-        ['add-event', 'add', AddEvent, 'Add an event using quick-add'],
-        ['remove-event', 'rm', RemoveEvent, 'Remove an event - TODO - break recurrence if necessary'],
-        ## ['update-event', 'update', UpdateEvent, 'Update an event - TODO - break recurrence if necessary'],
+        ['add-event', None, AddEvent, 'Add an event using quick-add'],
+        ['remove-event', None, RemoveEvent, 'Remove an event - TODO - break recurrence if necessary'],
+        ['update-event', None, UpdateEvent, 'Update an event - TODO - break recurrence if necessary'],
     ]
     optParameters = [
         ## see opt_connect
