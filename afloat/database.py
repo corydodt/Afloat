@@ -140,13 +140,7 @@ class AfloatReport(object):
         # getGvents must be called after getOfx so new accounts can be
         # created.
         _gventDeferred = self._ofxDeferred.addCallback(
-                lambda _: self.getGvents(
-                    email=c['gventEmail'],
-                    password=c['gventPassword'],
-                    calendar=c['gventCalendar'],
-                    account=c['defaultAccount'],
-                )
-            )
+                lambda _: self.getGvents(account=c['defaultAccount'],))
 
         _gventDeferred.addCallback(logSuccess, u'gvent')
         _gventDeferred.addErrback(logFailure, u'gvent')
@@ -221,15 +215,12 @@ class AfloatReport(object):
         """
         Run module afloat.gvent as a python process
         """
-        password = kw['password']
-        email = kw['email']
-        calendar = kw['calendar']
         account = kw['account']
 
         date1 = datetime.datetime.today() - days(1)
         date2 = date1 + days(self.config['lookAheadDays'] + 1)
 
-        d = protocol.getGvents(calendar, email, password, date1, date2)
+        d = protocol.getGvents(date1, date2)
 
         def gotGvents(gvents):
             for event in gvents:
@@ -402,10 +393,6 @@ class AfloatReport(object):
         """
         dl = []
 
-        calendar = self.config['gventCalendar']
-        email = self.config['gventEmail']
-        password = self.config['gventPassword']
-
         pendings = self.store.find(ScheduledTransaction, 
                 ScheduledTransaction.paidDate == None)
         for pending in pendings:
@@ -419,9 +406,8 @@ class AfloatReport(object):
 
                 print 'Found a matchup on "%s" == "%s"' % (
                         pending.title, matched.memo)
-                d_ = protocol.putMatchedTransaction(calendar, email, password,
-                        pending.href, pending.paidDate, pending.amount,
-                        pending.title)
+                d_ = protocol.putMatchedTransaction(pending.href,
+                        pending.paidDate, pending.amount, pending.title)
                 dl.append(d_)
             else:
                 continue

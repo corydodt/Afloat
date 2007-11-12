@@ -59,7 +59,7 @@ class GVentProtocol(ProcessProtocol):
         return d
 
 
-def getGvents(calendar, email, password, date1, date2):
+def getGvents(date1, date2):
     """
     Utility function to retrieve gvents and return them as CalendarEventString
     objects
@@ -69,11 +69,9 @@ def getGvents(calendar, email, password, date1, date2):
     date2 = date2.strftime('%Y-%m-%d')
 
     args = ['python', '-m', 'afloat.gvent.readcal', 
-         '--connect=%s//%s//%s' % (calendar, email, password),
          'get-events', '--fixup', date1, date2,
         ]
     cleanArgs = ['python', '-m', 'afloat.gvent.readcal', 
-         '--connect=%s//%s//%s' % (calendar, email, '~~~~~~~~'),
          'get-events', '--fixup', date1, date2,
         ]
     print ' '.join(cleanArgs)
@@ -93,7 +91,7 @@ def getGvents(calendar, email, password, date1, date2):
     return d_
 
 
-def putMatchedTransaction(calendar, email, password, uri, paidDate, newAmount, newTitle):
+def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
     """
     Utility fn to send a transaction back to google with post-matchup fixes,
     and return a CalendarEventString with the changes
@@ -101,7 +99,6 @@ def putMatchedTransaction(calendar, email, password, uri, paidDate, newAmount, n
     pp = GVentProtocol()
 
     args = ['python', '-m', 'afloat.gvent.readcal', 
-         '--connect=%s//%s//%s' % (calendar, email, password),
          'update-event', 
          '--paidDate=%s' % (formatDateYMD(paidDate),),
          '--amount=%s' % (newAmount,), 
@@ -109,7 +106,6 @@ def putMatchedTransaction(calendar, email, password, uri, paidDate, newAmount, n
          str(uri), 
         ]
     cleanArgs = ['python', '-m', 'afloat.gvent.readcal', 
-         '--connect=%s//%s//%s' % (calendar, email, '~~~~~~~~~'),
          'update-event', 
          '--paidDate=%s' % (formatDateYMD(paidDate),),
          '--amount=%s' % (newAmount,), 

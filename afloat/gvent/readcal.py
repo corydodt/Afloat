@@ -11,6 +11,8 @@ from gdata.calendar.service import CalendarEventQuery, CalendarService
 from gdata import calendar
 from gdata.service import RequestError
 
+from afloat.util import RESOURCE
+
 CALENDAR_NAMES = {
         'finance': 'bd7j228bhdt527n0o4pk8dhf50@group.calendar.google.com'
 }
@@ -337,6 +339,7 @@ class GetEvents(usage.Options):
         ['show-unclean', None, 'Show events that have extended properties',],
     ]
     def parseArgs(self, date1, date2):
+        execfile(RESOURCE('../config.py'), self)
         self['dateStart'] = date1
         self['dateEnd'] = date2
 
@@ -356,8 +359,11 @@ class GetEvents(usage.Options):
             # fixup done on them at some point in the past)
             if self['show-unclean']:
                 if e.extended_property:
-                    print >> sys.stderr, e.title.text, e.GetEditLink().href
-                    print >> sys.stderr, '  ', [(x.name, x.value) for x in e.extended_property]
+                    h = e.GetEditLink().href.split('/')[-1]
+                    print >> sys.stderr, e.title.text, '.../' + h
+                    print >> sys.stderr, '  ', '  \n  '.join([
+                            '%s %s' % (x.name, x.value) 
+                            for x in e.extended_property])
                 continue
 
             # fixup events if dictated
@@ -374,15 +380,17 @@ class GetEvents(usage.Options):
                     raise
 
             # print the event for other programs to parse
-            print formatEventString(e)
+            formatted = formatEventString(e)
+            if formatted:
+                print formatted
 
     def getEvents(self, client, date1, date2):
-        client.password = self['password']
-        client.email = self['email']
+        client.password = self['gventPassword']
+        client.email = self['gventEmail']
         client.source = 'TheSoftWorld-Afloat-0.0'
         client.ProgrammaticLogin()
 
-        return dateQuery(client, self['calendarName'], date1, date2)
+        return dateQuery(client, self['gventCalendar'], date1, date2)
 
 
 class ScrubEvents(GetEvents):
@@ -391,6 +399,7 @@ class ScrubEvents(GetEvents):
     """
     optFlags = []
     def parseArgs(self, date1, date2):
+        execfile(RESOURCE('../config.py'), self)
         self['dateStart'] = date1
         self['dateEnd'] = date2
 
@@ -417,7 +426,7 @@ class ScrubEvents(GetEvents):
         """
         if event.original_event:
             return
-        new1 = copyEvent(client, self['calendarName'], event)
+        new1 = copyEvent(client, self['gventCalendar'], event)
         deleteEvent(client, event)
 
 
@@ -427,6 +436,7 @@ class AddEvent(usage.Options):
     """
     optFlags = []
     def parseArgs(self, content ):
+        execfile(RESOURCE('../config.py'), self)
         self['content'] = content
 
     def postOptions(self):
@@ -437,12 +447,12 @@ class AddEvent(usage.Options):
         print self.addEvent(client)
 
     def addEvent(self, client):
-        client.password = self['password']
-        client.email = self['email']
+        client.password = self['gventPassword']
+        client.email = self['gventEmail']
         client.source = 'TheSoftWorld-Afloat-0.0'
         client.ProgrammaticLogin()
 
-        ev = quickAddEvent(client, self['calendarName'], self['content'])
+        ev = quickAddEvent(client, self['gventCalendar'], self['content'])
 
         # always use fixup on new events before formatting them
         fixupEvent(client, ev)
@@ -456,6 +466,7 @@ class RemoveEvent(usage.Options):
     """
     optFlags = []
     def parseArgs(self, uri):
+        execfile(RESOURCE('../config.py'), self)
         self['uri'] = uri
 
     def postOptions(self):
@@ -466,8 +477,8 @@ class RemoveEvent(usage.Options):
         print self.removeEvent(client)
 
     def removeEvent(self, client):
-        client.password = self['password']
-        client.email = self['email']
+        client.password = self['gventPassword']
+        client.email = self['gventEmail']
         client.source = 'TheSoftWorld-Afloat-0.0'
         client.ProgrammaticLogin()
 
@@ -488,6 +499,7 @@ class UpdateEvent(usage.Options):
             ['expectedDate', None, None, 'Change the expectedDate',],
             ]
     def parseArgs(self, uri):
+        execfile(RESOURCE('../config.py'), self)
         self['uri'] = uri
 
     def postOptions(self):
@@ -578,7 +590,7 @@ def parseKeywords(s):
 
 
 class Options(usage.Options):
-    synopsis = "readcal --connect=calendar//email[//password] <subcommand>"
+    synopsis = "readcal <subcommand>"
     subCommands = [
         ['get-events', None, GetEvents, 'Get all events in given date range'],
         ['scrub-events', None, ScrubEvents, 'Remove extended properties from events in range'],
@@ -586,22 +598,7 @@ class Options(usage.Options):
         ['remove-event', None, RemoveEvent, 'Remove an event - TODO - break recurrence if necessary'],
         ['update-event', None, UpdateEvent, 'Update an event - TODO - break recurrence if necessary'],
     ]
-    optParameters = [
-        ## see opt_connect
-    ]
-
-    def opt_connect(self, connectString):
-        splits = re.split('//', connectString, 2)
-        if len(splits) < 2:
-            raise usage.UsageError("** Invalid connect string")
-
-        calendar = splits.pop(0)
-        self['calendarName'] = CALENDAR_NAMES.get(calendar, calendar)
-        email = self['email'] = splits.pop(0)
-        if splits:
-            self['password'] = splits.pop(0)
-        else:
-            self['password'] = getpass(prompt="Password (%s): " % (email,))
+    optParameters = [ ]
 
     def postOptions(self):
         if not self.subCommand:
