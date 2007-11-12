@@ -121,13 +121,6 @@ class AfloatReport(object):
         self._ofxDeferred = self.getOfx(
                 getter.doGetting,
                 encoding=c['encoding'])
-        self._gventDeferred = self.getGvents(
-                email=c['gventEmail'],
-                password=c['gventPassword'],
-                calendar=c['gventCalendar'],
-                account=c['defaultAccount'],
-                )
-
         # store the results, successful or not, in the database
 
         def logSuccess(_, service):
@@ -144,16 +137,23 @@ class AfloatReport(object):
         self._ofxDeferred.addErrback(logFailure, u'ofx')
         self._ofxDeferred.addErrback(log.err)
 
-        self._gventDeferred.addCallback(logSuccess, u'gvent')
-        self._gventDeferred.addErrback(logFailure, u'gvent')
-        self._gventDeferred.addErrback(log.err)
+        # getGvents must be called after getOfx so new accounts can be
+        # created.
+        _gventDeferred = self._ofxDeferred.addCallback(
+                lambda _: self.getGvents(
+                    email=c['gventEmail'],
+                    password=c['gventPassword'],
+                    calendar=c['gventCalendar'],
+                    account=c['defaultAccount'],
+                )
+            )
 
-        self._requestsDone = defer.DeferredList([self._ofxDeferred,
-            self._gventDeferred,], fireOnOneErrback=True)
+        _gventDeferred.addCallback(logSuccess, u'gvent')
+        _gventDeferred.addErrback(logFailure, u'gvent')
+        _gventDeferred.addErrback(log.err)
 
-        # finally match them up, so gvents can get marked PAID
-        self._requestsDone.addCallback(lambda _: self.matchup())
-        self._requestsDone.addErrback(log.err)
+        _gventDeferred.addCallback(lambda _: self.matchup())
+        _gventDeferred.addErrback(log.err)
 
     def getOfx(self, request, **kw):
         """
@@ -184,7 +184,6 @@ class AfloatReport(object):
                 for txn in account.transactions.values():
                     self.newTransaction(account.id, txn)
             self.store.commit()
-            # TODO - matchups
             # TODO - create storm objects for Holds
             return p.banking
 
@@ -218,40 +217,6 @@ class AfloatReport(object):
             bankTxn.ledgerBalance = txn.ledgerBalance
             self.store.add(bankTxn)
 
-    def newScheduledTransaction(self, accountId, event):
-        """
-        Do CRUD operations on gvents we downloaded
-        """
-        schedTxn = self.store.get(ScheduledTransaction, event.href)
-        if schedTxn is not None:
-            pass
-            # TODO - update it in the database
-
-        else:
-            e = event
-            schedTxn = ScheduledTransaction()
-            schedTxn.href = e.href
-            if e.fromAccount is None and e.toAccount is None:
-                schedTxn.fromAccount = unicode(accountId)
-            else:
-                # set accounts, looking up the actual ids from the account type
-                fa = e.fromAccount
-                if fa:
-                    fa = self.store.find(Account, Account.type==fa).one().id
-                    schedTxn.fromAccount = fa
-                ta = e.toAccount
-                if ta:
-                    ta = self.store.find(Account, Account.type==ta).one().id
-                    schedTxn.toAccount = ta
-
-            schedTxn.amount = int(e.amount)
-            schedTxn.title = e.title
-            schedTxn.checkNumber = e.checkNumber
-            schedTxn.expectedDate = e.expectedDate
-            schedTxn.originalDate = e.originalDate
-            schedTxn.paidDate = e.paidDate
-            self.store.add(schedTxn)
-
     def getGvents(self, **kw):
         """
         Run module afloat.gvent as a python process
@@ -277,7 +242,49 @@ class AfloatReport(object):
         d.addCallback(gotGvents)
         return d
 
+    def newScheduledTransaction(self, accountId, event):
+        """
+        Do CRUD operations on gvents we downloaded
+        """
+        schedTxn = self.store.get(ScheduledTransaction, event.href)
+        if schedTxn is not None:
+            pass
+            # TODO - update it in the database
+
+        else:
+            e = event
+            schedTxn = ScheduledTransaction()
+            schedTxn.href = e.href
+            if e.fromAccount is None and e.toAccount is None:
+                schedTxn.fromAccount = unicode(accountId)
+            else:
+                # set accounts, looking up the actual ids from the account type
+                fa = e.fromAccount
+                if fa:
+                    fromAcct = self.store.find(Account, Account.type==fa).one().id
+                    schedTxn.fromAccount = fa
+                else:
+                    fa = unicode(self.config['defaultAccount'])
+                    schedTxn.fromAccount = fa
+                ta = e.toAccount
+                if ta:
+                    assert e.fromAccount, "toAccount set without fromAccount"
+                    ta = self.store.find(Account, Account.type==ta).one().id
+                    schedTxn.toAccount = ta
+
+            assert schedTxn.fromAccount is not None
+            schedTxn.amount = int(e.amount)
+            schedTxn.title = e.title
+            schedTxn.checkNumber = e.checkNumber
+            schedTxn.expectedDate = e.expectedDate
+            schedTxn.originalDate = e.originalDate
+            schedTxn.paidDate = e.paidDate
+            self.store.add(schedTxn)
+
     def updateAccount(self, account):
+        """
+        Make changes to an account in account table when it already exists
+        """
         bankAcct = self.store.get(Account, account.id)
         if bankAcct is None:
             bankAcct = Account()
@@ -400,6 +407,12 @@ class AfloatReport(object):
         Finally fix these items in the google database, setting extended properties
         and titles appropriately.
         """
+        dl = []
+
+        calendar = self.config['gventCalendar']
+        email = self.config['gventEmail']
+        password = self.config['gventPassword']
+
         pendings = self.store.find(ScheduledTransaction, 
                 ScheduledTransaction.paidDate == None)
         for pending in pendings:
@@ -409,18 +422,21 @@ class AfloatReport(object):
                 # overwrite the scheduled amount with the actual amount, when
                 # they differ (within the $0.05 tolerance)
                 pending.amount = matched.amount
+                pending.title = pending.title + '[PAID]'
 
-                print 'found a match on "%s" == "%s"' % (
+                print 'Found a matchup on "%s" == "%s"' % (
                         pending.title, matched.memo)
-                ## TODO.. fix in google database
-                ##  1. add [PAID] to title
-                ##  2. add paidDate
-                ##  3. adjust amount to match ledger exactly, if needed
+                d_ = protocol.putMatchedTransaction(calendar, email, password,
+                        pending.href, pending.paidDate, pending.amount,
+                        pending.title)
+                dl.append(d_)
             else:
                 continue
         self.store.commit()
 
         ## TODO.. bubble txns forward and flag LATE txns
+
+        return defer.DeferredList(dl)
 
     def tryMatch(self, schedtxn):
         """
@@ -474,9 +490,15 @@ class AfloatReport(object):
 
 
 def createTables():
+    """
+    Run sqlite to create the database tables the app needs
+    """
     os.system('sqlite3 -echo %s < %s' % (RESOURCE('afloat.db'), RESOURCE('tables.sql'),))
 
 def initializeStore():
+    """
+    Gimme a storm database.
+    """
     db = locals.create_database('sqlite:///%s' % (RESOURCE('afloat.db'),))
     store = locals.Store(db)
     return store

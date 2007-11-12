@@ -1,5 +1,4 @@
-1. Matchups - mark scheduled items as paid - PARTIALLY IMPLEMENTED - need to
-   serialize changes back to google calendar and database
+1. Handle LATE and unclosed scheduled transactions by bubbling forward etc.
 
 2. New-transaction widget
 

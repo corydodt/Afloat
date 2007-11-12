@@ -7,7 +7,7 @@ from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.error import ProcessDone
 from twisted.internet import reactor, defer
 
-from afloat.gvent.readcal import CalendarEventString
+from afloat.gvent.readcal import CalendarEventString, formatDateYMD
 
 class GVentProtocol(ProcessProtocol):
     """
@@ -90,4 +90,44 @@ def getGvents(calendar, email, password, date1, date2):
     d_ = pp.notifyOnDisconnect()
     d_.addErrback(cleanProcessDone, pp)
     d_.addCallback(lambda _: pp.gvents)
+    return d_
+
+
+def putMatchedTransaction(calendar, email, password, uri, paidDate, newAmount, newTitle):
+    """
+    Utility fn to send a transaction back to google with post-matchup fixes,
+    and return a CalendarEventString with the changes
+    """
+    pp = GVentProtocol()
+
+    args = ['python', '-m', 'afloat.gvent.readcal', 
+         '--connect=%s//%s//%s' % (calendar, email, password),
+         'update-event', 
+         '--paidDate=%s' % (formatDateYMD(paidDate),),
+         '--amount=%s' % (newAmount,), 
+         '--title=%s' % (str(newTitle),),
+         str(uri), 
+        ]
+    cleanArgs = ['python', '-m', 'afloat.gvent.readcal', 
+         '--connect=%s//%s//%s' % (calendar, email, '~~~~~~~~~'),
+         'update-event', 
+         '--paidDate=%s' % (formatDateYMD(paidDate),),
+         '--amount=%s' % (newAmount,), 
+         '--title=%s' % (str(newTitle),),
+         str(uri), 
+        ]
+    print ' '.join(cleanArgs)
+    pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
+            env=os.environ, usePTY=1)
+
+    def cleanProcessDone(reason, pp):
+        """
+        Ignore ProcessDone
+        """
+        reason.trap(ProcessDone)
+        return pp.gvents
+
+    d_ = pp.notifyOnDisconnect()
+    d_.addErrback(cleanProcessDone, pp)
+    d_.addCallback(lambda _: pp.gvents[0])
     return d_
