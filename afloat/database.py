@@ -314,7 +314,7 @@ class AfloatReport(object):
         pp = GVentProtocol()
 
         date1 = datetime.datetime.today() - days(1)
-        date2 = date1 + days(17)
+        date2 = date1 + days(self.config['lookAheadDays'] + 1)
 
         date1 = date1.strftime('%Y-%m-%d')
         date2 = date2.strftime('%Y-%m-%d')
@@ -361,16 +361,17 @@ class AfloatReport(object):
 
     def balanceDays(self, account):
         """
-        A BalanceDay for each day in the last 5 including today, and the next 16.
+        A BalanceDay for each day in the last 'lookBehindDays' including
+        today, and in the next 'lookAheadDays'.
         Compute by looking at the last transaction-with-balance on each day;
         fill in days with no transactions by carrying over from previous day.
         """
         # do bank transactions first.
         today = datetime.date.today()
-        weeksAgo2 = today - days(14)
+        beginDate = today - days(self.config['lookBehindDays'] + 7)
         txns = self.store.find(BankTransaction,
                 locals.And(
-                    BankTransaction.ledgerDate >= weeksAgo2,
+                    BankTransaction.ledgerDate >= beginDate,
                     BankTransaction.account == account,
                     )).order_by(BankTransaction.ledgerDate)
         txns = list(txns)
@@ -382,7 +383,7 @@ class AfloatReport(object):
 
         # inspect each day slot to make sure there's a balance in it. if no
         # balance, carry over the previous day's balance
-        currentDay = weeksAgo2
+        currentDay = beginDate
         while currentDay <= today:
             currentTomorrow = currentDay + days(1)
 
@@ -396,8 +397,8 @@ class AfloatReport(object):
                 bdays[currentTomorrow] = BalanceDay(currentTomorrow, bd.balance)
 
             # now clear the txn if it is not within 6 days, because we only want
-            # to see last 7
-            if currentDay < today - days(4):
+            # to see last lookBehindDays
+            if currentDay < today - days(self.config['lookBehindDays'] - 1):
                 del bdays[currentDay]
 
             if currentTomorrow == today:
@@ -422,7 +423,7 @@ class AfloatReport(object):
 
         lastDay = today
 
-        for n in range(16):
+        for n in range(self.config['lookAheadDays']):
             currentDay = today + days(n)
             currentBalance = bdays[lastDay].balance
             for txn in froms:
