@@ -1,6 +1,7 @@
 """
 Web resources
 """
+import datetime
 
 from zope.interface import implements
 
@@ -25,16 +26,27 @@ class DataXML(rend.Page):
         content = []
         pgOdd = tag.patternGenerator('oddDay')
         pgEven = tag.patternGenerator('evenDay')
+        pgToday = tag.patternGenerator('today')
+
+        today = datetime.datetime.today().date()
 
         days = database.balanceDays(self.service.store, self.account.id)
         for n, day in enumerate(days):
-            pat = (pgOdd if n%2==1 else pgEven)()
+            if day.date == today:
+                pat = pgToday()
+            else:
+                pat = (pgOdd if n%2==1 else pgEven)()
+
             weekday = int(day.date.strftime('%w'))
             if weekday in [MONDAY, FRIDAY]:
                 pat.fillSlots('showName', 1)
+            elif day.date == today:
+                pat.fillSlots('showName', 1)
             else:
                 pat.fillSlots('showName', 0)
-            pat.fillSlots('date', day.date.strftime('%a %m/%d'))
+
+            if not day.date == today:
+                pat.fillSlots('date', day.date.strftime('%a %m/%d'))
             pat.fillSlots('balance', day.balance/100.)
             content.append(pat)
 

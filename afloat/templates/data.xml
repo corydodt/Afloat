@@ -2,14 +2,15 @@
 <graph 
     numberPrefix="$"
     showLimits="0"
-    xAxisName="day"
+    xAxisName=""
     decimalPrecision="0"
     numdivlines="0"
     canvasBorderThickness="0"
     canvasBorderColor="ffffff"
     animation="1"
     formatNumberScale="0"
-    chartRightMargin="30"
+    chartRightMargin="20"
+    baseFontSize="8"
     xmlns:n="http://nevow.com/ns/nevow/0.1"
     n:render="days" >
     <n:invisible n:pattern="evenDay">
@@ -22,6 +23,12 @@
       <set color="#59806f"><n:attr name=
         "showName"><n:slot name="showName" /></n:attr><n:attr name=
           "name"><n:slot name="date" /></n:attr><n:attr name=
+          "value"><n:slot name="balance" /></n:attr></set>
+    </n:invisible>
+    <n:invisible n:pattern="today">
+      <set color="#cfe6dc"><n:attr name=
+        "showName"><n:slot name="showName" /></n:attr><n:attr name=
+          "name">^^</n:attr><n:attr name=
           "value"><n:slot name="balance" /></n:attr></set>
     </n:invisible>
 </graph>
