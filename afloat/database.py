@@ -247,38 +247,43 @@ class AfloatReport(object):
         Do CRUD operations on gvents we downloaded
         """
         schedTxn = self.store.get(ScheduledTransaction, event.href)
-        if schedTxn is not None:
-            pass
-            # TODO - update it in the database
 
-        else:
-            e = event
+        e = event
+
+        new = 0
+
+        if schedTxn is None:
             schedTxn = ScheduledTransaction()
             schedTxn.href = e.href
-            if e.fromAccount is None and e.toAccount is None:
-                schedTxn.fromAccount = unicode(accountId)
-            else:
-                # set accounts, looking up the actual ids from the account type
-                fa = e.fromAccount
-                if fa:
-                    id = self.store.find(Account, Account.type==fa).one().id
-                else:
-                    id = unicode(self.config['defaultAccount'])
-                schedTxn.fromAccount = id
-                ta = e.toAccount
-                if ta:
-                    assert e.fromAccount, "toAccount set without fromAccount"
-                    ta = self.store.find(Account, Account.type==ta).one().id
-                    schedTxn.toAccount = ta
+            new = 1
 
-            assert schedTxn.fromAccount is not None
-            schedTxn.amount = int(e.amount)
-            schedTxn.title = e.title
-            schedTxn.checkNumber = e.checkNumber
-            schedTxn.expectedDate = e.expectedDate
-            schedTxn.originalDate = e.originalDate
-            schedTxn.paidDate = e.paidDate
+        if e.fromAccount is None and e.toAccount is None:
+            schedTxn.fromAccount = unicode(accountId)
+        else:
+            # set accounts, looking up the actual ids from the account type
+            fa = e.fromAccount
+            if fa:
+                id = self.store.find(Account, Account.type==fa).one().id
+            else:
+                id = unicode(self.config['defaultAccount'])
+            schedTxn.fromAccount = id
+            ta = e.toAccount
+            if ta:
+                assert e.fromAccount, "toAccount set without fromAccount"
+                ta = self.store.find(Account, Account.type==ta).one().id
+                schedTxn.toAccount = ta
+
+        assert schedTxn.fromAccount is not None
+        schedTxn.amount = int(e.amount)
+        schedTxn.title = e.title
+        schedTxn.checkNumber = e.checkNumber
+        schedTxn.expectedDate = e.expectedDate
+        schedTxn.originalDate = e.originalDate
+        schedTxn.paidDate = e.paidDate
+
+        if new:
             self.store.add(schedTxn)
+        self.store.commit()
 
     def updateAccount(self, account):
         """
@@ -352,25 +357,14 @@ class AfloatReport(object):
         froms = [t for t in self.upcomingScheduled()
                 if t.paidDate is None]
 
-        tos = []
-        for txn in froms:
-            if txn.toAccount is not None:
-                tos.append(txn.href)
-
-        # True, if there is both a fromDate and toDate
-        hasToAccount = lambda t: t.href in tos
-
         lastDay = today
 
         for n in range(self.config['lookAheadDays']):
             currentDay = today + days(n)
             currentBalance = bdays[lastDay].balance
             for txn in froms:
-                # if there is a TO ACCOUNT, then the FROM account is a debit (and
-                # this is a transfer transaction)
-                adjustedAmount = (txn.amount if not hasToAccount(txn) else -txn.amount)
                 if txn.expectedDate == currentDay:
-                    currentBalance = currentBalance + adjustedAmount
+                    currentBalance = currentBalance + txn.amount
 
             bdays[currentDay] = BalanceDay(currentDay, currentBalance)
             lastDay = currentDay

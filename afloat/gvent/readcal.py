@@ -202,47 +202,69 @@ def fixupEvent(client, event):
     Do nothing if event already has these attributes.
     """
     changed = 0
-    propsFound = [x.name for x in event.extended_property]
+    propsFound = dict([(x.name, x.value) for x in event.extended_property])
+
+    get = propsFound.get
 
     # remove [comments inside brackets] before processing the event
     titleText = cleanEventTitle(event)
 
-    if EVENT_AMOUNT not in propsFound:
-        amount = findAmount(titleText)
-        if amount is None:
-            raise NoAmountError(titleText)
+    amount = findAmount(titleText)
+    if amount is None:
+        raise NoAmountError(titleText)
+
+    if get(EVENT_AMOUNT) != amount or EVENT_AMOUNT not in propsFound:
         prop = calendar.ExtendedProperty(name=EVENT_AMOUNT, value=str(amount))
         event.extended_property.append(prop)
+        propsFound[EVENT_AMOUNT] = prop.value
         changed = 1
 
-    if EVENT_CHECKNUMBER not in propsFound:
-        cn = findCheckNumber(titleText)
+    cn = findCheckNumber(titleText)
+    if get(EVENT_CHECKNUMBER) != cn or EVENT_CHECKNUMBER not in propsFound:
         if cn is not None:
             prop = calendar.ExtendedProperty(name=EVENT_CHECKNUMBER, value=str(cn))
             event.extended_property.append(prop)
+            propsFound[EVENT_CHECKNUMBER] = prop.value
             changed = 1
+    ## else: ...
+    ## FIXME - retitling an event, such that there is no longer a check
+    ## number, should clear the check number property.
+    ## But there is presently no way to simply remove an extended_property
+    ## from a google event, so we can't handle this case
 
-    if EVENT_TOACCOUNT not in propsFound and event.content.text:
+    if event.content.text:
         fromAccount, toAccount = findAccounts(event.content.text)
-        if toAccount is not None:
-            prop = calendar.ExtendedProperty(name=EVENT_TOACCOUNT,
-                    value=toAccount.upper().strip())
-            event.extended_property.append(prop)
-            changed = 1
-        if fromAccount is not None:
-            if toAccount is None:
-                raise MissingToAccount(event)
-            prop = calendar.ExtendedProperty(name=EVENT_FROMACCOUNT,
-                    value=fromAccount.upper().strip())
-            event.extended_property.append(prop)
+        if ( (get(EVENT_TOACCOUNT) != toAccount) or
+             (get(EVENT_FROMACCOUNT) != fromAccount)
+             ) and event.content.text:
+            if toAccount is not None:
+                prop = calendar.ExtendedProperty(name=EVENT_TOACCOUNT,
+                        value=toAccount.upper().strip())
+                event.extended_property.append(prop)
+                changed = 1
+            if fromAccount is not None:
+                if toAccount is None:
+                    raise MissingToAccount(event)
+                prop = calendar.ExtendedProperty(name=EVENT_FROMACCOUNT,
+                        value=fromAccount.upper().strip())
+                event.extended_property.append(prop)
+                changed = 1
+    ## else: ...
+    ## FIXME - clearing event.content.text in google calendar should also
+    ## clear from/to accounts.
+    ## But there is presently no way to simply remove an extended_property
+    ## from a google event, so we can't handle this case
 
-    if EVENT_ORIGINALDATE not in propsFound:
+    assert len(event.when) == 1
+    startTime = event.when[0].start_time
+    if get(EVENT_ORIGINALDATE) != startTime or EVENT_ORIGINALDATE not in propsFound:
         # FIXME - just setting this HAS to break recurrence because
         # there will be a separate ORIGINALDATE for each one
-        assert len(event.when) == 1
         prop = calendar.ExtendedProperty(name=EVENT_ORIGINALDATE,
-                value=event.when[0].start_time)
+                value=startTime)
         event.extended_property.append(prop)
+        propsFound[EVENT_ORIGINALDATE] = prop.value
+        changed = 1
 
     if changed:
         client.UpdateEvent(event.GetEditLink().href, event)
