@@ -5,7 +5,7 @@ import datetime
 
 from twisted.python import log
 from twisted.application import internet
-from twisted.internet import reactor, task, defer
+from twisted.internet import reactor, task
 
 from nevow import appserver
 
@@ -41,10 +41,12 @@ class AfloatService(internet.TCPServer):
         self.config = {}
         execfile(RESOURCE('../config.py'), self.config)
 
+        self.report = database.AfloatReport(self.store, self.config)
+
         # FIXME - reactor.callWhenRunning(self.doRequests) should work here,
         # but somehow self.doRequests still gets called before the reactor is
         # running
-        reactor.callLater(0, self.doRequests)
+        reactor.callLater(0, self.report.update)
 
         self.downloadTimes = []
         for timestr in self.config['downloadTimes']:
@@ -64,63 +66,8 @@ class AfloatService(internet.TCPServer):
             t = datetime.datetime.today().time()
             for dl in self.downloadTimes:
                 if (dl.hour, dl.minute) == (t.hour, t.minute):
-                    self.doRequests()
+                    self.report.update()
 
         lc = task.LoopingCall(checkTime)
 
         lc.start(60, now=False)
-
-    def doRequests(self):
-        """
-        Run all the network requests for OFX data and gvents, then match the
-        two different kinds of transactions
-        """
-        c = self.config
-        self.defaultAccount = c['defaultAccount']
-
-        # set up requests for event and bank data retrieval
-        from afloat.ofx import get
-
-        getter = get.Options()
-        getter.update(self.config)
-
-        from afloat import database
-
-        # keep these processes from being garbage collected
-        self._ofxDeferred = database.getOfx(self.store, getter.doGetting,
-                **{'encoding': c['encoding']})
-        self._gventDeferred = database.getGvents(self.store,
-                email=c['gventEmail'], 
-                password=c['gventPassword'], 
-                calendar=c['gventCalendar'],
-                account=c['defaultAccount'],
-                )
-
-        # store the results, successful or not, in the database
-
-        def logSuccess(_, service):
-            database.NetworkLog.log(self.store, service, u'OK', u'Success')
-
-        def logFailure(f, service):
-            log.msg("** Logging to the database: Service %s failed" %
-                    (service,) )
-            database.NetworkLog.log(self.store, service, u'ERROR',
-                    unicode(f))
-            log.err(f)
-
-        self._ofxDeferred.addCallback(logSuccess, u'ofx')
-        self._ofxDeferred.addErrback(logFailure, u'ofx')
-        self._ofxDeferred.addErrback(log.err)
-
-        self._gventDeferred.addCallback(logSuccess, u'gvent')
-        self._gventDeferred.addErrback(logFailure, u'gvent')
-        self._gventDeferred.addErrback(log.err)
-
-        self._requestsDone = defer.DeferredList([self._ofxDeferred,
-            self._gventDeferred,], fireOnOneErrback=True)
-
-        # finally match them up, so gvents can get marked PAID
-        self._requestsDone.addCallback(
-                lambda _: database.matchup(self.store))
-        self._requestsDone.addErrback(log.err)
-
