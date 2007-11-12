@@ -3,15 +3,20 @@ import sys, os
 import time
 from getpass import getpass
 import string
+import datetime
+from uuid import uuid4
 
 from twisted.python import usage
 from twisted.web.client import getPage
 from twisted.internet import reactor
 
-from afloat.util import RESOURCE
+from afloat.util import RESOURCE, days
 
 
 class Options(usage.Options):
+    """
+    Retrieve OFX events from the server configured in config.py
+    """
     synopsis = """get"""
     # optFlags = [[ .. ]]
     # optParameters = [[ .. ]]
@@ -36,31 +41,34 @@ class Options(usage.Options):
         ofx = f.read().strip()
         t = string.Template(ofx)
 
-        dt = time.strftime('%Y%m%d%H%M%S')
-
-        getuuid = lambda: os.popen('/usr/bin/uuidgen').read().strip()
-        uuid1 = getuuid()
-        uuid2 = getuuid()
-        uuid3 = getuuid()
-        uuid4 = getuuid()
+        dt = datetime.datetime.today()
+        dateStart = dt - days(self['lookBehindDays'])
 
         t = t.substitute({'user': self['user'],
-            'time': dt,
-            'uuid1': uuid1,
-            'uuid2': uuid2,
-            'uuid3': uuid3,
-            'uuid4': uuid4,
+            'time': formatDate14(dt),
+            'uuid1': uuid4(),
+            'uuid2': uuid4(),
+            'uuid3': uuid4(),
+            'uuid4': uuid4(),
             'password': self['password'],
             'org': self['org'],
             'fid': self['fid'],
             'accountSavings': self['accountSavings'],
             'accountChecking': self['accountChecking'],
             'encoding': self['encoding'],
+            'dateStart': formatDate14(dateStart),
             })
 
         headers = {'Content-type': 'application/x-ofx'}
         d = getPage(self['url'], headers=headers, method='POST', postdata=t)
         return d
+
+
+def formatDate14(dt):
+    """
+    Return a stringified date, YYYYMMDDhhmmss (14 digits)
+    """
+    return dt.strftime('%Y%m%d%H%M%S')
 
 
 def run(argv=None):

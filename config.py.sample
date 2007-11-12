@@ -1,6 +1,7 @@
 # vi:ft=python
 accountChecking = 'xxxxxxxx=8'
 accountSavings = 'xxxxxxxx=0'
+defaultAccount = accountChecking
 
 fid = "321172594"
 url = "https://www.eecuonline.org/scripts/isaofx.dll"
@@ -9,6 +10,9 @@ encoding = 'latin1'
 
 user = 'xxxx'
 password = 'xxxx'
+
+lookAheadDays = 16
+lookBehindDays = 5
 
 gventEmail = 'xxxxxxxx@gmail.com'
 gventPassword = 'xxxx'
