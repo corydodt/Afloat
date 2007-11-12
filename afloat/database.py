@@ -308,7 +308,7 @@ class AfloatReport(object):
                 locals.And(
                     BankTransaction.ledgerDate >= beginDate,
                     BankTransaction.account == account,
-                    )).order_by(BankTransaction.ledgerDate)
+                    )).order_by(BankTransaction.ledgerDate, BankTransaction.id)
         txns = list(txns)
 
         # create balance days for each bank txn
