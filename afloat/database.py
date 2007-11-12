@@ -261,11 +261,10 @@ class AfloatReport(object):
                 # set accounts, looking up the actual ids from the account type
                 fa = e.fromAccount
                 if fa:
-                    fromAcct = self.store.find(Account, Account.type==fa).one().id
-                    schedTxn.fromAccount = fa
+                    id = self.store.find(Account, Account.type==fa).one().id
                 else:
-                    fa = unicode(self.config['defaultAccount'])
-                    schedTxn.fromAccount = fa
+                    id = unicode(self.config['defaultAccount'])
+                schedTxn.fromAccount = id
                 ta = e.toAccount
                 if ta:
                     assert e.fromAccount, "toAccount set without fromAccount"
