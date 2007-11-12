@@ -1,6 +1,5 @@
 #!/usr/bin/python
-import sys, os
-import time
+import sys
 from getpass import getpass
 import string
 import datetime
