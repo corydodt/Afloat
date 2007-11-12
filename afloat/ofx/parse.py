@@ -68,9 +68,9 @@ class Hold(object):
 class OFXParser(sgmllib.SGMLParser):
     """
     Get financials out.  We need (from signon, acctlist, bankstmt):
-.      /ofx/signonmsgsrsv1/dtserver
-.                         /fi/fid (to verify)
-.                         /users.primacn (to verify)
+X      /ofx/signonmsgsrsv1/dtserver
+X                         /fi/fid (to verify)
+X                         /users.primacn (to verify)
 X          /signupmsgsrsv1/acctinfors/acctinfo/bankacctinfo/bankacctfrom/acctid (all available, key)
 X                                                                       /accttype (all by acctid)
 X                                                          /users.bankinfo/ledgerbal/balamt (all by acctid)
@@ -90,7 +90,7 @@ X                                                             /dtposted
 _                                                             /dtuser
 X                                                             /memo
 X                                                             /checknum
-X                                                             /users.stmt/trnbal (to verify)
+X                                                             /users.stmt/trnbal
     """
 
     ## def finish_starttag(self, tag, attrs):
@@ -174,16 +174,16 @@ X                                                             /users.stmt/trnbal
         self.printDebug(('  ' * (len(self._stateStack)+1)) + '/' + tag)
 
     def data_fid(self, stack, tag, data):
-        # TODO - verify this is my bank (config file?)
-        self.printDebug(data)
+        """Save this so we can verify it later for safety"""
+        self.foundFid = data
 
     def data_users_primacn(self, stack, tag, data):
-        # TODO - verify this is my primary account (config file?)
-        self.printDebug(data)
+        """Save this so we can verify it later for safety"""
+        self.primaryAccount = data
 
     def data_dtserver(self, stack, tag, data):
-        # TODO - record this in the network log
-        self.printDebug(data)
+        """Save this so we can verify it later for safety"""
+        self.serverDate = data
 
     def data_acctid(self, stack, tag, data):
         if stackEndsWith(stack, 'acctinfo/bankacctinfo/bankacctfrom'):
@@ -225,7 +225,7 @@ X                                                             /users.stmt/trnbal
         if stackEndsWith(stack, 'hold'):
             hold = self.currentTransaction
             # dtapplied has its own stupid date format
-            hold.dateApplied = parseDate2(data)
+            hold.dateApplied = parseDateMDY(data)
 
     def data_regdmax(self, stack, tag, data):
         # TODO - show this in the UI somewhere
@@ -251,7 +251,7 @@ X                                                             /users.stmt/trnbal
 
     def data_dtposted(self, stack, tag, data):
         if stackEndsWith(stack, 'stmttrn'):
-            self.currentTransaction.date = parseDate(data)
+            self.currentTransaction.date = parseDate14(data)
 
     def data_memo(self, stack, tag, data):
         if stackEndsWith(stack, 'stmttrn'):
@@ -259,9 +259,9 @@ X                                                             /users.stmt/trnbal
 
     def data_dtasof(self, stack, tag, data):
         if stackEndsWith(stack, 'users.bankinfo/ledgerbal'):
-            self.currentAccount.ledgerDate = parseDate(data)
+            self.currentAccount.ledgerDate = parseDate14(data)
         elif stackEndsWith(stack, 'users.bankinfo/availbal'):
-            self.currentAccount.availDate = parseDate(data)
+            self.currentAccount.availDate = parseDate14(data)
         elif stackEndsWith(stack, 'stmtrs/ledgerbal'):
             self.printDebug(data)
         elif stackEndsWith(stack, 'stmtrs/availbal'):
@@ -293,15 +293,15 @@ def parseCurrency(s):
     return int(float(s) * 100)
 
 
-def parseDate2(s):
-    """Return a datetime object"""
+def parseDateMDY(s):
+    """Return a datetime object from a m/d/Y"""
     if s == 'None':
         return None
     return datetime.datetime.strptime(s[:10], '%m/%d/%Y')
 
 
-def parseDate(s):
-    """Return a datetime object"""
+def parseDate14(s):
+    """Return a datetime object from a 14+ digit date"""
     if s == 'None':
         return None
     return datetime.datetime.strptime(s[:14], '%Y%m%d%H%M%S')
@@ -318,8 +318,7 @@ def stackEndsWith(stack, s):
 class Options(usage.Options):
     synopsis = "parse"
     # optParameters = [[long, short, default, help], ...]
-    optFlags = [['debug', 'd', 'Whether to print out debugging output'],
-            ]
+    optFlags = [ ]
 
     def postOptions(self):
         execfile(RESOURCE('../config.py'), self)
@@ -331,8 +330,16 @@ class Options(usage.Options):
         p.encoding = self['encoding']
         p.feed(ofx)
 
+        # do some sanity checks on this data
+        self.verify(p)
+
         if self['debug']:
             print p.banking.textReport()
+
+    def verify(self, parser):
+        assert parseDate14(parser.serverDate).date() == datetime.datetime.today().date()
+        assert parser.foundFid == self['fid']
+        assert self['defaultAccount'].startswith(parser.primaryAccount)
 
 
 def run(argv=None):

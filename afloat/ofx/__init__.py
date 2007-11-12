@@ -11,4 +11,4 @@ if __name__ == '__main__':
     out = getter['out']
     parser = parse.Options()
     parser['stream'] = out
-    parser.parseOptions(['--debug'])
+    parser.parseOptions([])
