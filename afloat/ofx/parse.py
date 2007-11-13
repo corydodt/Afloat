@@ -62,7 +62,8 @@ class Transaction(object):
 
 
 class Hold(object):
-    pass
+    def __init__(self):
+        self.dateApplied = None
 
 
 class OFXParser(sgmllib.SGMLParser):

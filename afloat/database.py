@@ -172,16 +172,65 @@ class AfloatReport(object):
 
             p.feed(ofx)
 
+            # create regular transactions
             for account in p.banking.accounts.values():
                 self.updateAccount(account)
                 for txn in account.transactions.values():
                     self.newTransaction(account.id, txn)
+
+                # create holds
+                for hold in account.holds:
+                    self.newHold(account.id, hold)
+
+                # scrub holds that have been applied by skipping all holds
+                # that no longer in the ofx
+                self.scrubHolds(account.id, account.holds)
+
             self.store.commit()
-            # TODO - create storm objects for Holds
             return p.banking
 
         d.addCallback(gotOfx)
         return d
+
+    def scrubHolds(self, accountId, ofxHolds):
+        """
+        Any holds in the database which do not correspond to holds in the bank
+        are removed as no longer valid.
+        """
+        storeHolds = self.store.find(Hold, Hold.account == accountId)
+        # use dicts like sets to determine which are missing, since holds have
+        # no unique keys.
+        left = dict([((h.amount, h.description), h) for h in storeHolds])
+        right = dict([((h.amount, h.description), h) for h in ofxHolds])
+        missing = [i[1] for i in left.items() if i[0] not in right.keys()]
+
+        for h in missing:
+            log.msg("** HOLD %s FOR $%.2f WENT AWAY" % (h.description,
+                h.amount/100.))
+            self.store.remove(h)
+
+        self.store.commit()
+
+    def newHold(self, accountId, hold):
+        """
+        Do CRUD operations on ofx holds we downloaded
+        """
+        # holds don't have ids, so just match on description/amount.
+        matched = self.store.find(Hold, 
+                Hold.description == hold.description,
+                Hold.amount == hold.amount,
+                Hold.account == accountId).one()
+        if matched:
+            if hold.dateApplied and not matched.dateApplied:
+                matched.dateApplied = hold.dateApplied
+        if not matched:
+            new1 = Hold()
+            new1.description = hold.description
+            new1.amount = hold.amount
+            new1.account = accountId
+            new1.dateApplied = hold.dateApplied
+            self.store.add(new1)
+        self.store.commit()
 
     def newTransaction(self, accountId, txn):
         """
