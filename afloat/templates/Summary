@@ -5,7 +5,8 @@
       <tbody n:render="summary">
         <tr n:pattern="balance">
           <td><n:slot name="accountType" /></td>
-          <td><a class="ledgerBalance"><n:slot name=
+          <td><a class="ledgerBalance"><n:attr name=
+              "href"><n:slot name="account" /></n:attr><n:slot name=
               "ledger" /></a></td>
           <td><a class="txnTip availableBalance"><n:attr name=
               "rel">holds+<n:slot name="account" /></n:attr><n:slot name=

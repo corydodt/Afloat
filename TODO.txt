@@ -2,9 +2,7 @@
 
 2. New-transaction widget
 
-3. Balance register when clicking on ledger balance
-
-4. Burn rate computation and graph
+3. Burn rate computation and graph
 
 Minor:
 

@@ -560,6 +560,11 @@ class AfloatReport(object):
                     locals.Desc(BankTransaction.id))[:3]
         return ret
 
+    def transactions(self, account):
+        """
+        All the transactions
+        """
+        return self.store.find(BankTransaction, BankTransaction.account == account)
 
 def createTables():
     """

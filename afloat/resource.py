@@ -59,6 +59,33 @@ class DataXML(rend.Page):
         return rend.Page.renderHTTP(self, ctx)
 
 
+class RegisterPage(rend.Page):
+    docFactory = loaders.xmlfile(RESOURCE('templates/register.xhtml'))
+
+    def __init__(self, account, report):
+        self.account = account
+        self.report = report
+
+    def render_all(self, ctx, data):
+        tag = ctx.tag
+        tag.fillSlots("type", self.account.type)
+
+        pg = tag.patternGenerator("transaction")
+
+        innards = []
+        for txn in self.report.transactions(self.account.id):
+            row = pg()
+            f = row.fillSlots
+            f("date", formatDateWeekday(txn.ledgerDate))
+            f("memo", txn.memo)
+            f("amount", formatCurrency(txn.amount))
+            f("balance", formatCurrency(txn.ledgerBalance))
+            innards.append(row)
+
+        tag.fillSlots("register", innards)
+        return ctx.tag
+
+
 class AfloatPage(athena.LivePage):
     docFactory = loaders.xmlfile(RESOURCE('templates/afloatpage.xhtml'))
     addSlash = 1
@@ -88,6 +115,8 @@ class AfloatPage(athena.LivePage):
         for a in self.accounts:
             if segs[-1] == '%s.xml' % (a.id,):
                 return DataXML(a, self.report), []
+            elif segs[-1] == a.id:
+                return RegisterPage(a, self.report), []
         return athena.LivePage.locateChild(self, ctx, segs)
 
 
@@ -164,6 +193,7 @@ class Summary(athena.LiveElement):
             tag['\n', debdiv, '\n']
 
         return tag
+
 
 class Graphs(athena.LiveElement):
     """

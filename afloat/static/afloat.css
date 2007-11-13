@@ -97,11 +97,8 @@ body {
     font-weight: bold;
 }
 
-.ledgerBalance
-{
-    color: #6096BF;
-    border-bottom: 1px solid #6096BF;
-    cursor: pointer;
+a:link { 
+   color: #6096BF;
 }
 
 .availableBalance, .last3
