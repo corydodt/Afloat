@@ -157,3 +157,27 @@ h1, h2, h3, h4 {
     color: #647D8F;
     font-weight: bold;
 }
+
+.hiddenSummary {
+    display: none;
+}
+
+.prototip .txnTipTip {
+  width: 280px;
+  border-right: 1px solid #59806F ;
+  }
+.prototip .txnTipTip .toolbar {
+  background: #CFE6DC;
+  font: italic 8pt;
+  font-weight: bold;
+  }
+.prototip .txnTipTip .title { padding: 2px; }
+.prototip .txnTipTip .content { 
+  background: #CFE6DC;
+  font-size: 7pt;
+  padding: 2px;
+  }
+
+.txnTipTip td {
+    border: none;
+}

@@ -27,3 +27,22 @@ Afloat.Graphs.selectGraph = function (accountType) {
     $$(".graph-" + accountType)[0].parentNode.show()
 }
 
+var TIPCONFIG = {
+    fixed: true,
+    closeButton: false,
+    hook: { target: 'bottomRight', tip: 'bottomLeft' },
+    className: 'txnTipTip',
+    offset: { x:0, y:25 }
+};
+
+Afloat.Summary = Nevow.Athena.Widget.subclass('Afloat.Summary');
+Afloat.Summary.methods( // {{{
+    function __init__(self, node, accounts) { // {{{
+        Afloat.Summary.upcall(self, '__init__', node);
+        $A(node.select('.txnTip')).each(function (a) {
+            var rel = a.getAttribute('rel');
+            var partner = node.select('[rev=' + rel + ']')[0];
+            new Tip(a, partner.innerHTML, TIPCONFIG);
+        });
+    } // }}}
+); // }}}

@@ -529,6 +529,37 @@ class AfloatReport(object):
         qry = self.store.find(Account).order_by(Account.type)
         return [a for a in qry]
 
+    def holds(self, account):
+        rs = self.store.find(Hold,
+                Hold.account==account).order_by(Hold.amount)
+        return rs
+
+    def last3Deposits(self, account):
+        rs = self.store.find(BankTransaction,
+                locals.And(
+                    BankTransaction.account==account,
+                    BankTransaction.amount > 0,
+                    ),
+                )
+        ret = rs.order_by(locals.Desc(BankTransaction.ledgerDate),
+                    locals.Desc(BankTransaction.id))[:3]
+        return ret
+
+    def last3BigDebits(self, account):
+        """
+        Somewhat arbitrarily returns the last 3 debits of amounts greater than
+        config['bigAmount']
+        """
+        bigAmount = self.config['bigAmount']
+        rs = self.store.find(BankTransaction,
+                locals.And(
+                    BankTransaction.account==account,
+                    BankTransaction.amount < bigAmount,
+                    ))
+        ret = rs.order_by(locals.Desc(BankTransaction.ledgerDate),
+                    locals.Desc(BankTransaction.id))[:3]
+        return ret
+
 
 def createTables():
     """

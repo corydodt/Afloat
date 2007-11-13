@@ -45,7 +45,7 @@ class DataXML(rend.Page):
                 pat.fillSlots('showName', 0)
 
             if not day.date == today:
-                pat.fillSlots('date', day.date.strftime('%a %m/%d'))
+                pat.fillSlots('date', formatDateWeekday(day.date))
             pat.fillSlots('balance', day.balance/100.)
             content.append(pat)
 
@@ -97,7 +97,7 @@ class Summary(athena.LiveElement):
     transactions
     """
     docFactory = loaders.xmlfile(RESOURCE("templates/Summary"))
-    # jsClass = u'Afloat.Summary'
+    jsClass = u'Afloat.Summary'
 
     def __init__(self, report, *a, **kw):
         self.report = report
@@ -113,9 +113,57 @@ class Summary(athena.LiveElement):
             pat.fillSlots('accountType', account.type)
             pat.fillSlots('ledger', '%.2f' % (account.ledgerBalance/100.,))
             pat.fillSlots('available', '%.2f' % (account.availableBalance/100.,))
+            pat.fillSlots('account', account.id)
             content.append(pat)
         return tag[content]
 
+    @page.renderer
+    def hiddenSummary(self, req, tag):
+        accounts = self.report.accounts()
+
+        pgHold = tag.patternGenerator("holdTable")
+        pgThreeDeposits = tag.patternGenerator("threeDepositsTable")
+        pgThreeDebits = tag.patternGenerator("threeDebitsTable")
+        for account in self.report.accounts():
+            hdiv = pgHold()
+            htab = hdiv.patternGenerator("t")()
+            pg1 = htab.patternGenerator("holdItem")
+            for hold in self.report.holds(account.id):
+                row = pg1()
+                row.fillSlots('amount', formatCurrency(hold.amount))
+                row.fillSlots('description', hold.description)
+                htab[row]
+            hdiv[htab]
+            hdiv.fillSlots('account', account.id)
+            tag['\n', hdiv, '\n']
+
+            depdiv = pgThreeDeposits()
+            deptab = depdiv.patternGenerator("t")()
+            pg2 = deptab.patternGenerator("threeDepositsItem")
+            for dep in self.report.last3Deposits(account.id):
+                row = pg2()
+                row.fillSlots('date', formatDateWeekday(dep.ledgerDate))
+                row.fillSlots('amount', formatCurrency(dep.amount))
+                row.fillSlots('memo', dep.memo)
+                deptab[row]
+            depdiv[deptab]
+            depdiv.fillSlots('account', account.id)
+            tag['\n', depdiv, '\n']
+
+            debdiv = pgThreeDebits()
+            debtab = debdiv.patternGenerator("t")()
+            pg3 = debtab.patternGenerator("threeDebitsItem")
+            for deb in self.report.last3BigDebits(account.id):
+                row = pg3()
+                row.fillSlots('date', formatDateWeekday(deb.ledgerDate))
+                row.fillSlots('amount', formatCurrency(deb.amount))
+                row.fillSlots('memo', deb.memo)
+                debtab[row]
+            debdiv[debtab]
+            debdiv.fillSlots('account', account.id)
+            tag['\n', debdiv, '\n']
+
+        return tag
 
 class Graphs(athena.LiveElement):
     """
@@ -172,15 +220,23 @@ class Scheduler(athena.LiveElement):
                 pat = pgDeposit()
             else:
                 pat = pgDebit()
-            pat.fillSlots('amount', '%.2f' % (item.amount/100.,))
+            pat.fillSlots('amount', formatCurrency(item.amount))
             pat.fillSlots('memo', item.title)
-            pat.fillSlots('date', item.expectedDate.strftime('%a %m/%d'))
+            pat.fillSlots('date', formatDateWeekday(item.expectedDate))
             if item.paidDate:
                 pat[pat.patternGenerator('statusPaid')()]
             else:
                 pat[pat.patternGenerator('statusPending')()]
             tag[pat]
         return tag
+
+
+def formatDateWeekday(dt):
+    return dt.strftime('%a %m/%d')
+
+
+def formatCurrency(amt):
+    return '%.2f' % (amt/100.,)
 
 
 class Root(rend.Page):
