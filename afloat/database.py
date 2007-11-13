@@ -564,7 +564,9 @@ class AfloatReport(object):
         """
         All the transactions
         """
-        return self.store.find(BankTransaction, BankTransaction.account == account)
+        return self.store.find(BankTransaction, BankTransaction.account ==
+                account).order_by(BankTransaction.ledgerDate,
+                        BankTransaction.id)
 
 def createTables():
     """
