@@ -159,9 +159,11 @@ h1, h2, h3, h4 {
     display: none;
 }
 
+.prototip {
+    background:transparent;
+}
 .prototip .txnTipTip {
-  width: 280px;
-  border-right: 1px solid #59806F ;
+  width: 300px;
   }
 .prototip .txnTipTip .toolbar {
   background: #CFE6DC;
@@ -170,11 +172,26 @@ h1, h2, h3, h4 {
   }
 .prototip .txnTipTip .title { padding: 2px; }
 .prototip .txnTipTip .content { 
-  background: #CFE6DC;
   font-size: 7pt;
-  padding: 2px;
+    padding: 0px; margin: 0px;
   }
 
 .txnTipTip td {
     border: none;
+}
+
+.ttArrow1 {
+    float:left;
+    height:100%;
+}
+
+.ttArrow1-1 {
+    position:relative;
+    bottom:27px;
+}
+
+.txnTipTip-table {
+    float: left;
+    background: #CFE6DC;
+    border-right: 1px solid #59806F;
 }

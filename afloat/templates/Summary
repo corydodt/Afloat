@@ -24,7 +24,10 @@
     <n:invisible n:render="hiddenSummary">
       <div class="hiddenSummary holdTable" n:pattern="holdTable">
         <n:attr name="rev">holds+<n:slot name="account" /></n:attr>
-        <table n:pattern="t">
+        <div class=
+          "ttArrow1"><div style="height:100%">&#160;</div><div class=
+            "ttArrow1-1"><img src="/static/leftarrow-10x10-cfe6dc.png" /></div></div>
+        <table class="txnTipTip-table" n:pattern="t">
           <tr n:pattern="holdItem">
             <td><n:slot name="amount" /></td>
             <td><n:slot name="description" /></td>
@@ -35,7 +38,10 @@
       <div n:pattern="threeDepositsTable" class=
           "hiddenSummary threeDepositsTable"><n:attr name=
           "rev">last3Deposits+<n:slot name="account" /></n:attr>
-        <table n:pattern="t">
+        <div class=
+          "ttArrow1"><div style="height:100%">&#160;</div><div class=
+            "ttArrow1-1"><img src="/static/leftarrow-10x10-cfe6dc.png" /></div></div>
+        <table class="txnTipTip-table" n:pattern="t">
           <tr n:pattern="threeDepositsItem">
             <td><n:slot name="date" /></td>
             <td><n:slot name="amount" /></td>
@@ -47,7 +53,10 @@
       <div n:pattern="threeDebitsTable" class=
           "hiddenSummary threeDebitsTable"><n:attr name=
           "rev">last3Debits+<n:slot name="account" /></n:attr>
-        <table n:pattern="t">
+        <div class=
+          "ttArrow1"><div style="height:100%">&#160;</div><div class=
+            "ttArrow1-1"><img src="/static/leftarrow-10x10-cfe6dc.png" /></div></div>
+        <table class="txnTipTip-table" n:pattern="t">
           <tr n:pattern="threeDebitsItem">
             <td><n:slot name="date" /></td>
             <td><n:slot name="amount" /></td>

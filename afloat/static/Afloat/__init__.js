@@ -32,7 +32,10 @@ var TIPCONFIG = {
     closeButton: false,
     hook: { target: 'bottomRight', tip: 'bottomLeft' },
     className: 'txnTipTip',
-    offset: { x:0, y:25 }
+    offset: { x:0, y:15 },
+    effect: 'appear',
+    duration: 0.2
+    // hideOn: { element: 'closeButton' }
 };
 
 Afloat.Summary = Nevow.Athena.Widget.subclass('Afloat.Summary');
