@@ -560,13 +560,25 @@ class AfloatReport(object):
                     locals.Desc(BankTransaction.id))[:3]
         return ret
 
-    def transactions(self, account):
+    def transactions(self, account, recent=None):
         """
-        All the transactions
+        All the transactions within 'recent' days.  If recent is None, all the
+        transactions.
         """
-        return self.store.find(BankTransaction, BankTransaction.account ==
-                account).order_by(BankTransaction.ledgerDate,
-                        BankTransaction.id)
+        if recent is None:
+            return self.store.find(BankTransaction, 
+                    BankTransaction.account == account
+                    ).order_by(
+                    BankTransaction.ledgerDate, BankTransaction.id
+                    )
+        startDate = datetime.datetime.today() - days(recent)
+        return self.store.find(BankTransaction, locals.And(
+                BankTransaction.account == account,
+                BankTransaction.ledgerDate >= startDate,
+                )).order_by(
+                BankTransaction.ledgerDate, BankTransaction.id
+                )
+
 
 def createTables():
     """

@@ -195,3 +195,11 @@ h1, h2, h3, h4 {
     background: #CFE6DC;
     border-right: 1px solid #59806F;
 }
+
+.register {
+    font-size: 9pt;
+}
+
+.register thead {
+    font-weight: bold;
+}

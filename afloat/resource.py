@@ -73,7 +73,7 @@ class RegisterPage(rend.Page):
         pg = tag.patternGenerator("transaction")
 
         innards = []
-        for txn in self.report.transactions(self.account.id):
+        for txn in self.report.transactions(self.account.id, recent=30):
             row = pg()
             f = row.fillSlots
             f("date", formatDateWeekday(txn.ledgerDate))
