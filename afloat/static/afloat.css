@@ -46,13 +46,17 @@ body {
     float: left;
 }
 
+.scheduler
+{
+    font-size: 8.5pt;
+}
+
 .schedulerRight
 {
     float: left;
     margin-left: 1em;
     border-left: 1px solid #618059;
     padding-left: 1em;
-    font-size: 8.5pt;
 }
 
 .schedulerRight td

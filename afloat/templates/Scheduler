@@ -1,9 +1,9 @@
 <div xmlns:n="http://nevow.com/ns/nevow/0.1" n:render="liveElement" class=
     "scheduler">
   <div class="schedulerLeft">
-    <div>New transaction:</div>
+    <h3>Schedule a Transaction</h3>
     <form name="scheduler">
-      <input type="text" name="newItem" />
+      <input type="text" id='newItem' name="newItem" />
     </form>
   </div>
   <div class="schedulerRight">

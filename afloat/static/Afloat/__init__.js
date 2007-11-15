@@ -49,3 +49,28 @@ Afloat.Summary.methods( // {{{
         });
     } // }}}
 ); // }}}
+
+Afloat.Scheduler = Nevow.Athena.Widget.subclass('Afloat.Scheduler');
+Afloat.Scheduler.methods( // {{{
+    function __init__(self, node, accounts) { // {{{
+        Afloat.Scheduler.upcall(self, '__init__', node);
+        var entryBox = self.nodeById('newItem');
+        entryBox.value = 'Enter a new scheduled item';
+        entryBox.select();
+        node.select('.schedulerLeft h3')[0].focus();
+        function clearer(ev) {
+            ev.target.clear();
+            Event.stopObserving(ev.target, 'focus', clearer);
+            Event.stopObserving(ev.target, 'click', clearer);
+        }
+        Event.observe(entryBox, 'focus', clearer);
+        Event.observe(entryBox, 'click', clearer);
+        var form = document.forms['scheduler']
+        Event.observe(form, 'submit', function (e) { self.submit() });
+    }, // }}}
+
+    function submit(self, event) { // {{{
+        event.stopPropagation();
+        event.preventDefault();
+    } // }}}
+); // }}}

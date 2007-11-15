@@ -55,7 +55,8 @@ class DataXML(rend.Page):
         """
         Set text/xml on the resource
         """
-        inevow.IRequest(ctx).setHeader('content-type', 'text/xml')
+        req = inevow.IRequest(ctx)
+        req.setHeader('content-type', 'text/xml')
         return rend.Page.renderHTTP(self, ctx)
 
 
@@ -235,7 +236,7 @@ class Scheduler(athena.LiveElement):
     User interface for adding new future transactions
     """
     docFactory = loaders.xmlfile(RESOURCE("templates/Scheduler"))
-    # jsClass = u'Afloat.Scheduler'
+    jsClass = u'Afloat.Scheduler'
     def __init__(self, report, *a, **kw):
         self.report = report
         super(Scheduler, self).__init__(*a, **kw)
