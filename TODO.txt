@@ -4,6 +4,17 @@
 
 3. Burn rate computation and graph
 
+4. Check these discrepancies:
+    - savings was showing ~$1000 when it should have been showing ~700
+
+    - displayed balance in checking was off from graph balance in checking
+
 Minor:
 
 - show future debits from savings / clean up defaultAccount stuff
+
+- way to correct errors in the database - i.e. when something gets marked PAID
+  but google calendar never saw it
+
+- enforce that updates must be successfully received by google calendar before
+  any related database transactions are modified
