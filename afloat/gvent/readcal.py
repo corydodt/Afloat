@@ -509,8 +509,8 @@ class UpdateEvent(usage.Options):
         print self.updateEvent(client)
 
     def updateEvent(self, client):
-        client.password = self['password']
-        client.email = self['email']
+        client.password = self['gventPassword']
+        client.email = self['gventEmail']
         client.source = 'TheSoftWorld-Afloat-0.0'
         client.ProgrammaticLogin()
 
