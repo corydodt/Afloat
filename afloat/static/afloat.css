@@ -68,6 +68,7 @@ body {
 
 .schedulerRight td.memo {
     text-align: left;
+    width: 200px;
 }
 
 .schedulerLeft
