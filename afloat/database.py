@@ -403,42 +403,57 @@ class AfloatReport(object):
 
             currentDay = currentTomorrow
 
-
         # Get the scheduled gvent transactions now and apply them.
         # For balance purposes, skip any transactions that were PAID.
 
-        froms = [t for t in self.upcomingScheduled()
-                if t.paidDate is None]
+        myFrom = [t for t in self.upcomingScheduled(account)
+                if t.paidDate is None
+                and t.fromAccount == account]
+        myTo = [t for t in self.upcomingScheduled(account)
+                if t.paidDate is None
+                and t.toAccount == account]
 
         lastDay = today
 
         for n in range(self.config['lookAheadDays']):
             currentDay = today + days(n)
             currentBalance = bdays[lastDay].balance
-            for txn in froms:
+            for txn in myFrom:
                 if txn.expectedDate == currentDay:
                     currentBalance = currentBalance + txn.amount
+            for txn in myTo:
+                if txn.expectedDate == currentDay:
+                    currentBalance = currentBalance - txn.amount
 
             bdays[currentDay] = BalanceDay(currentDay, currentBalance)
             lastDay = currentDay
 
         return zip(*sorted(bdays.items()))[1]
 
-    def upcomingScheduled(self, ):
+    def upcomingScheduled(self, account=None):
         """
         Return all scheduled transactions for the next
-        self.config['lookAheadDays'] days, for the given account
+        self.config['lookAheadDays'] days, for the given account.  If account
+        is None, for the defaultAccount.
         """
+        if account is None:
+            account = self.config['defaultAccount']
+
         today = datetime.date.today()
         periodEnd = today + days(self.config['lookAheadDays'])
 
         ST = ScheduledTransaction
-        found = self.store.find(ST,
+        foundFrom = self.store.find(ST,
                 locals.And(
                     ST.expectedDate <= periodEnd,
-                    ST.fromAccount == unicode(self.config['defaultAccount']),
+                    ST.fromAccount == unicode(account),
                     )).order_by(ST.expectedDate)
-        return  list(found)
+        foundTo = self.store.find(ST,
+                locals.And(
+                    ST.expectedDate <= periodEnd,
+                    ST.toAccount == unicode(account),
+                    )).order_by(ST.expectedDate)
+        return list(foundFrom) + list(foundTo)
 
     def matchup(self):
         """
