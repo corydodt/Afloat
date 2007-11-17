@@ -33,17 +33,11 @@ safeTty() {
 
 while true; do
   killTwistd
-  # Python automatically compiles source files; if we let it do that,
-  # dnotify will think something has changed as soon as twistd imports the
-  # file that changed, and we'll restart twice.
-  # To prevent that, compile this directory now before running.
-  echo COMPILING
-  python -m compileall . >/dev/null 2>&1
   # Redirect stdin from our tty. If you don't do this, interactive pdb
   # doesn't work.
   echo RUNNING
-  twistd ${twistdOptions} afloat ${afloatOptions} <"`safeTty`" &
+  twistd ${twistdOptions} afloat ${afloatOptions} # <"`safeTty`" &
   # and dnotify blocks waiting for anything to change...
-  inotifywait -e modify **/*.py
+  inotifywait ${inotifyOptions}
 done
 
