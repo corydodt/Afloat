@@ -71,10 +71,7 @@ def getGvents(date1, date2):
     args = ['python', '-m', 'afloat.gvent.readcal', 
          'get-events', '--fixup', date1, date2,
         ]
-    cleanArgs = ['python', '-m', 'afloat.gvent.readcal', 
-         'get-events', '--fixup', date1, date2,
-        ]
-    print ' '.join(cleanArgs)
+    print ' '.join(args)
     pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
             env=os.environ, usePTY=1)
 
@@ -88,6 +85,32 @@ def getGvents(date1, date2):
     d_ = pp.notifyOnDisconnect()
     d_.addErrback(cleanProcessDone, pp)
     d_.addCallback(lambda _: pp.gvents)
+    return d_
+
+
+def quickAdd(content):
+    """
+    Utility fn to schedule a new event with the quick add interface
+    and return a CalendarEventString with the new event
+    """
+    pp = GVentProtocol()
+
+    args = ['python', '-m', 'afloat.gvent.readcal', 
+         'add-event', content]
+    print ' '.join(args)
+    pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
+            env=os.environ, usePTY=1)
+
+    def cleanProcessDone(reason, pp):
+        """
+        Ignore ProcessDone
+        """
+        reason.trap(ProcessDone)
+        return pp.gvents
+
+    d_ = pp.notifyOnDisconnect()
+    d_.addErrback(cleanProcessDone, pp)
+    d_.addCallback(lambda _: pp.gvents[0])
     return d_
 
 
@@ -105,14 +128,7 @@ def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
          '--title=%s' % (str(newTitle),),
          str(uri), 
         ]
-    cleanArgs = ['python', '-m', 'afloat.gvent.readcal', 
-         'update-event', 
-         '--paidDate=%s' % (formatDateYMD(paidDate),),
-         '--amount=%s' % (newAmount,), 
-         '--title=%s' % (str(newTitle),),
-         str(uri), 
-        ]
-    print ' '.join(cleanArgs)
+    print ' '.join(args)
     pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
             env=os.environ, usePTY=1)
 

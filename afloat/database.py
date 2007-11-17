@@ -176,11 +176,11 @@ class AfloatReport(object):
             for account in p.banking.accounts.values():
                 self.updateAccount(account)
                 for txn in account.transactions.values():
-                    self.newTransaction(account.id, txn)
+                    self.importTransaction(account.id, txn)
 
                 # create holds
                 for hold in account.holds:
-                    self.newHold(account.id, hold)
+                    self.importHold(account.id, hold)
 
                 # scrub holds that have been applied by skipping all holds
                 # that no longer in the ofx
@@ -211,7 +211,7 @@ class AfloatReport(object):
 
         self.store.commit()
 
-    def newHold(self, accountId, hold):
+    def importHold(self, accountId, hold):
         """
         Do CRUD operations on ofx holds we downloaded
         """
@@ -232,7 +232,7 @@ class AfloatReport(object):
             self.store.add(new1)
         self.store.commit()
 
-    def newTransaction(self, accountId, txn):
+    def importTransaction(self, accountId, txn):
         """
         Do CRUD operations on ofx txns we downloaded
         """
@@ -272,7 +272,7 @@ class AfloatReport(object):
 
         def gotGvents(gvents):
             for event in gvents:
-                self.newScheduledTransaction(account, event)
+                self.importScheduledTransaction(account, event)
             gventSet = set([g.href for g in gvents])
             
             # Look for scheduledtxn items that have disappeared from the
@@ -295,7 +295,7 @@ class AfloatReport(object):
         d.addCallback(gotGvents)
         return d
 
-    def newScheduledTransaction(self, accountId, event):
+    def importScheduledTransaction(self, accountId, event):
         """
         Do CRUD operations on gvents we downloaded
         """
@@ -455,6 +455,22 @@ class AfloatReport(object):
                     )).order_by(ST.expectedDate)
         return list(foundFrom) + list(foundTo)
 
+    def quickAddItem(self, content):
+        """
+        Add a new scheduled item to the google calendar.  Add the returned
+        transaction to our database.
+        """
+        d = protocol.quickAdd(content)
+
+        def gotEvent(event):
+            self.importScheduledTransaction(
+                    self.config['defaultAccount'], event)
+            log.msg("New event and calendar responded: OK, %s" % (event,))
+
+        d.addCallback(gotEvent)
+
+        return d
+
     def matchup(self):
         """
         Flag as paid any scheduled transactions that were found in the register
@@ -600,6 +616,7 @@ def createTables():
     Run sqlite to create the database tables the app needs
     """
     os.system('sqlite3 -echo %s < %s' % (RESOURCE('afloat.db'), RESOURCE('tables.sql'),))
+
 
 def initializeStore():
     """
