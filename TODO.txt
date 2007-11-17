@@ -13,3 +13,5 @@ Minor:
 
 - enforce that updates must be successfully received by google calendar before
   any related database transactions are modified
+ 
+- in On the Bubble, insert a blank row for every Monday
