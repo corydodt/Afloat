@@ -201,6 +201,7 @@ def fixupEvent(client, event):
     event.  Parse from/to fields from event description and get From/To for a
     transaction.
     Do nothing if event already has these attributes.
+    If anything changed, send the event back to Google.
     """
     changed = 0
     propsFound = dict([(x.name, x.value) for x in event.extended_property])
