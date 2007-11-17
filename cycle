@@ -36,7 +36,7 @@ while true; do
   # Redirect stdin from our tty. If you don't do this, interactive pdb
   # doesn't work.
   echo RUNNING
-  twistd ${twistdOptions} afloat ${afloatOptions} # <"`safeTty`" &
+  twistd ${twistdOptions} afloat ${afloatOptions} <"`safeTty`" &
   # and dnotify blocks waiting for anything to change...
   inotifywait ${inotifyOptions}
 done
