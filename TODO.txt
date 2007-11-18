@@ -14,9 +14,6 @@ Minor:
  
 - in On the Bubble, insert a blank row for every Monday
 
-- when a calendar transaction has been deleted, also delete the database
-  transaction
-
 - put a spinner over the scheduler input when adding a new transaction that way
 
 - button to delete txns from the bubble
