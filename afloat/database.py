@@ -337,6 +337,7 @@ class AfloatReport(object):
         if new:
             self.store.add(schedTxn)
         self.store.commit()
+        return schedTxn
 
     def updateAccount(self, account):
         """
@@ -463,9 +464,10 @@ class AfloatReport(object):
         d = protocol.quickAdd(content)
 
         def gotEvent(event):
-            self.importScheduledTransaction(
+            txn = self.importScheduledTransaction(
                     self.config['defaultAccount'], event)
             log.msg("New event and calendar responded: OK, %s" % (event,))
+            return txn
 
         d.addCallback(gotEvent)
 
