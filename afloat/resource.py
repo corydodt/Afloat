@@ -261,6 +261,12 @@ class Scheduler(athena.LiveElement):
             tag[pat]
         return tag
 
+    @athena.expose
+    def submit(self, value):
+        d = self.report.quickAddItem(value)
+        d.addCallback(lambda txn: u"OK")
+        return d
+
 
 def formatDateWeekday(dt):
     return dt.strftime('%a %m/%d')

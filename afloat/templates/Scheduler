@@ -4,6 +4,7 @@
     <h3>Schedule a Transaction</h3>
     <form name="scheduler">
       <input type="text" id='newItem' name="newItem" />
+      <input type="submit" id="submit" value="Go" />
     </form>
   </div>
   <div class="schedulerRight">

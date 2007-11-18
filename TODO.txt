@@ -1,8 +1,6 @@
 1. Handle LATE and unclosed scheduled transactions by bubbling forward etc.
 
-2. New-transaction widget
-
-3. Burn rate computation and graph
+2. Burn rate computation and graph
 
 Minor:
 
@@ -15,3 +13,10 @@ Minor:
   any related database transactions are modified
  
 - in On the Bubble, insert a blank row for every Monday
+
+- when a calendar transaction has been deleted, also delete the database
+  transaction
+
+- put a spinner over the scheduler input when adding a new transaction that way
+
+- button to delete txns from the bubble

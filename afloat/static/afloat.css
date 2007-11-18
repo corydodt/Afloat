@@ -76,10 +76,6 @@ body {
     float: left;
     width: 320px;
 }
-.schedulerLeft input
-{
-    width: 320px;
-}
 
 .summary
 {
@@ -207,4 +203,13 @@ h1, h2, h3, h4 {
 
 .register thead {
     font-weight: bold;
+}
+
+.scheduler [name=newItem] {
+    float: left;
+    width: 290px;
+}
+
+.scheduler input[value=Put] {
+    float: left;
 }

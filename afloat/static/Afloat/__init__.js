@@ -65,12 +65,22 @@ Afloat.Scheduler.methods( // {{{
         }
         Event.observe(entryBox, 'focus', clearer);
         Event.observe(entryBox, 'click', clearer);
-        var form = document.forms['scheduler']
-        Event.observe(form, 'submit', function (e) { self.submit() });
+        var form = document.forms['scheduler'];
+        Event.observe(form, 'submit', function (e) { self.submit(e) });
+        var go = self.nodeById('submit');
+        Event.observe(go, 'click', function (e) { self.submit(e) });
     }, // }}}
 
     function submit(self, event) { // {{{
         event.stopPropagation();
         event.preventDefault();
+        var val = self.nodeById('newItem').value
+        var d = self.callRemote("submit", val)
+        d.addCallback(function (ret) {
+            if (ret == 'OK') {
+                // reload the page
+                window.history.go(0);
+            }
+        });
     } // }}}
 ); // }}}
