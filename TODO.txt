@@ -13,6 +13,3 @@ Minor:
   any related database transactions are modified
  
 - in On the Bubble, insert a blank row for every Monday
-
-- put a spinner over the scheduler input when adding a new transaction that
-  way. also a spinner when deleting.

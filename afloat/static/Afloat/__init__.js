@@ -2,6 +2,16 @@
 // import DeanEdwards
 // import Divmod.Defer
 
+Afloat.newSpinner = function (message) {
+    if (message === undefined) message = '';
+
+    var spinner = document.documentElement.select('.theSpinner')[0].cloneNode(true);
+    spinner.insert(message);
+    spinner.show();
+
+    return spinner;
+}
+
 Afloat.Graphs = Nevow.Athena.Widget.subclass('Afloat.Graphs');
 Afloat.Graphs.methods( // {{{
     function __init__(self, node, accounts) { // {{{
@@ -85,8 +95,14 @@ Afloat.Scheduler.methods( // {{{
     function schedule(self, event) { // {{{
         event.stopPropagation();
         event.preventDefault();
-        var val = self.nodeById('newItem').value
-        var d = self.callRemote("schedule", val)
+        var newItem = self.nodeById('newItem');
+        var val = newItem.value;
+        var d = self.callRemote("schedule", val);
+
+        // install a spinner over the form
+        var spinner = Afloat.newSpinner("Creating new item \"" + val + "\"");
+        newItem.parentNode.replace(spinner);
+
         d.addCallback(function (ret) {
             if (ret == 'OK') {
                 // reload the page
@@ -102,6 +118,8 @@ Afloat.Scheduler.methods( // {{{
         var memo = p.select('.memo')[0].innerHTML;
         if (confirm("Un-schedule \"" + memo + "\"?")) { 
             var d = self.callRemote("unschedule", n.getAttribute('rev'));
+            var spinner = Afloat.newSpinner();
+            n.replace(spinner);
             d.addCallback(function (ret) {
                 if (ret == 'OK') {
                     // reload the page
