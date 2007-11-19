@@ -291,6 +291,7 @@ class AfloatReport(object):
                     self.store.remove(sched)
 
             self.store.commit()
+            print "DONE TALKING TO GOOGLE CALENDAR"
 
         d.addCallback(gotGvents)
         return d
@@ -337,6 +338,10 @@ class AfloatReport(object):
         if new:
             self.store.add(schedTxn)
         self.store.commit()
+        if new:
+            log.msg("** IMPORTED %s" % (e.title,))
+        else:
+            log.msg("** Already saw %s" % (e.title,))
         return schedTxn
 
     def updateAccount(self, account):
@@ -470,6 +475,24 @@ class AfloatReport(object):
             return txn
 
         d.addCallback(gotEvent)
+
+        return d
+
+    def removeItem(self, href):
+        """
+        Remove an item from the google calendar.
+        """
+        d = protocol.remove(href)
+
+        def gotRemovedEvent(event):
+            txn = self.store.get(ScheduledTransaction, event.href)
+            assert txn is not None
+            self.store.remove(txn)
+            self.store.commit()
+            log.msg("** Removed an item from the calendar: %s" % (txn.title,))
+            return txn
+
+        d.addCallback(gotRemovedEvent)
 
         return d
 

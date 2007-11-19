@@ -243,26 +243,48 @@ class Scheduler(athena.LiveElement):
 
     @page.renderer
     def scheduled(self, req, tag):
-        pgDebit = tag.patternGenerator("upcomingDebit")
-        pgDeposit = tag.patternGenerator("upcomingDeposit")
+        pgDebit = tag.patternGenerator("debit")
+        pgDeposit = tag.patternGenerator("deposit")
+        pg = tag.patternGenerator("contents")
+
         coming = self.report.upcomingScheduled()
         for item in coming:
-            if item.amount >= 0:
-                pat = pgDeposit()
-            else:
-                pat = pgDebit()
+            pat = pg()
+
             pat.fillSlots('amount', formatCurrency(item.amount))
             pat.fillSlots('memo', item.title)
             pat.fillSlots('date', formatDateWeekday(item.expectedDate))
+            pat.fillSlots('href', item.href)
             if item.paidDate:
-                pat[pat.patternGenerator('statusPaid')()]
+                pgStatus = pat.patternGenerator('statusPaid')
             else:
-                pat[pat.patternGenerator('statusPending')()]
-            tag[pat]
+                pgStatus = pat.patternGenerator('statusPending')
+            pat.fillSlots('paidColumn', pgStatus())
+
+            if item.amount >= 0:
+                container = pgDeposit()
+            else:
+                container = pgDebit()
+
+            container.fillSlots('contents', pat)
+
+            tag[container]
         return tag
 
     @athena.expose
-    def submit(self, value):
+    def unschedule(self, href):
+        """
+        Remove the specified item from the google calendar
+        """
+        d = self.report.removeItem(href)
+        d.addCallback(lambda txn: u"OK")
+        return d
+
+    @athena.expose
+    def schedule(self, value):
+        """
+        Put a new item on the google calendar
+        """
         d = self.report.quickAddItem(value)
         d.addCallback(lambda txn: u"OK")
         return d

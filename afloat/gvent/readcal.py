@@ -56,7 +56,10 @@ class MissingToAccount(Exception):
 
 
 def deleteExactEvent(client, uri):
-    return client.DeleteEvent(uri)
+    """
+    Remove the event.  Returns nothing
+    """
+    client.DeleteEvent(uri)
 
 def getExactEvent(client, uri):
     return client.GetCalendarEventEntry(uri)
@@ -288,8 +291,8 @@ class CalendarEventString(object):
         else:
             self.checkNumber = None
         self.bankId = coalesce(bankId)
-        self.originalDate = parseDateYMD(originalDate)
-        self.expectedDate = parseDateYMD(expectedDate)
+        self.originalDate = parseDateYMD(originalDate[:10])
+        self.expectedDate = parseDateYMD(expectedDate[:10])
         self.amount = int(amount)
         self.fromAccount = coalesce(fromAccount)
         self.toAccount = coalesce(toAccount)
@@ -383,6 +386,7 @@ class GetEvents(usage.Options):
             formatted = formatEventString(e)
             if formatted:
                 print formatted
+        sys.stdout.flush()
 
     def getEvents(self, client, date1, date2):
         client.password = self['gventPassword']
@@ -482,7 +486,9 @@ class RemoveEvent(usage.Options):
         client.source = 'TheSoftWorld-Afloat-0.0'
         client.ProgrammaticLogin()
 
-        ev = deleteExactEvent(client, self['uri'])
+        ev = getExactEvent(client, self['uri'])
+
+        deleteExactEvent(client, ev.GetEditLink().href)
 
         return formatEventString(ev)
 

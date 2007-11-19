@@ -11,19 +11,30 @@
     <h3>On the Bubble</h3>
     <table>
       <tbody n:render="scheduled">
-        <tr n:pattern="upcomingDeposit" class="deposit">
+
+        <n:invisible n:pattern="contents">
           <td><strong><n:slot name="amount" /></strong></td>
           <td><n:slot name="date" /></td>
           <td class="memo"><n:slot name="memo" /></td>
-          <td n:pattern="statusPaid" class="statusPaid">PAID</td>
-          <td n:pattern="statusPending" class="statusPending">pending</td>
+          <n:slot name="paidColumn">
+            <td n:pattern="statusPaid" class="statusPaid">PAID</td>
+            <td n:pattern="statusPending" class="statusPending">pending</td>
+          </n:slot>
+          <td class="cancelButton" title="Delete this"><n:attr name=
+            "rev"><n:slot name="href" /></n:attr><img src=
+            "/static/cancel.png" /></td>
+        </n:invisible>
+
+        <tr n:pattern="deposit" class="deposit">
+          <n:slot name="contents">
+            deposit..
+          </n:slot>
         </tr>
-        <tr n:pattern="upcomingDebit">
-          <td><strong><n:slot name="amount" /></strong></td>
-          <td><n:slot name="date" /></td>
-          <td class="memo"><n:slot name="memo" /></td>
-          <td n:pattern="statusPaid" class="statusPaid">PAID</td>
-          <td n:pattern="statusPending" class="statusPending">pending</td>
+
+        <tr n:pattern="debit" class="debit">
+          <n:slot name="contents">
+            debit..
+          </n:slot>
         </tr>
       </tbody>
     </table>

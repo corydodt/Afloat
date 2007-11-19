@@ -66,21 +66,49 @@ Afloat.Scheduler.methods( // {{{
         Event.observe(entryBox, 'focus', clearer);
         Event.observe(entryBox, 'click', clearer);
         var form = document.forms['scheduler'];
-        Event.observe(form, 'submit', function (e) { self.submit(e) });
+        Event.observe(form, 'submit', function (e) { self.schedule(e) });
         var go = self.nodeById('submit');
-        Event.observe(go, 'click', function (e) { self.submit(e) });
+        Event.observe(go, 'click', function (e) { self.schedule(e) });
+
+        // make the cancel button's hover display strikethrough
+        node.select('.cancelButton').each( function (n) {
+            Event.observe(n, 'mouseover', function (e) { 
+                n.parentNode.addClassName('strike');
+            });
+            Event.observe(n, 'mouseout', function (e) { 
+                n.parentNode.removeClassName('strike');
+            });
+            Event.observe(n, 'click', function (e) { self.unschedule(e, n) });
+        });
     }, // }}}
 
-    function submit(self, event) { // {{{
+    function schedule(self, event) { // {{{
         event.stopPropagation();
         event.preventDefault();
         var val = self.nodeById('newItem').value
-        var d = self.callRemote("submit", val)
+        var d = self.callRemote("schedule", val)
         d.addCallback(function (ret) {
             if (ret == 'OK') {
                 // reload the page
                 window.history.go(0);
             }
         });
+        return d;
+    }, // }}}
+
+    function unschedule(self, event, target) { // {{{
+        var n = target;
+        var p = n.parentNode;
+        var memo = p.select('.memo')[0].innerHTML;
+        if (confirm("Un-schedule \"" + memo + "\"?")) { 
+            var d = self.callRemote("unschedule", n.getAttribute('rev'));
+            d.addCallback(function (ret) {
+                if (ret == 'OK') {
+                    // reload the page
+                    window.history.go(0);
+                }
+            });
+        }
+        return d;
     } // }}}
 ); // }}}

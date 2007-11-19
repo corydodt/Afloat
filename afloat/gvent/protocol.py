@@ -6,17 +6,20 @@ import os
 from twisted.internet.protocol import ProcessProtocol
 from twisted.internet.error import ProcessDone
 from twisted.internet import reactor, defer
+from twisted.python.text import stringyString
+from twisted.python import log
 
 from afloat.gvent.readcal import CalendarEventString, formatDateYMD
 
 class GVentProtocol(ProcessProtocol):
     """
-    Communicate with "python -m afloat.gvent.readcal ..." to retrieve the calendar
+    Communicate with "python afloat/gvent/readcal.py ..." to retrieve the calendar
     items on stdout
     """
-    TERM = '\r\n'
+    TERM = '\n'
     def __init__(self, *a, **kw):
         self.stream = ''
+        self.errors = ''
         self.gvents = []
         self.disconnectDeferreds = []
 
@@ -45,11 +48,15 @@ class GVentProtocol(ProcessProtocol):
             g = self.gvents[-1]
 
     def errReceived(self, data):
-        print '***', data
+        self.errors = self.errors + data
 
     def processEnded(self, reason):
         """Notify our disconnects"""
-        assert self.stream == '', self.stream
+        if self.errors:
+            log.msg('*** readcal errored out ***', self.errors)
+            for d in self.disconnectDeferreds:
+                d.errback(reason)
+                return
         for d in self.disconnectDeferreds:
             d.callback(reason)
 
@@ -68,12 +75,12 @@ def getGvents(date1, date2):
     date1 = date1.strftime('%Y-%m-%d')
     date2 = date2.strftime('%Y-%m-%d')
 
-    args = ['python', '-m', 'afloat.gvent.readcal', 
+    args = ['python', '-m', 'afloat.gvent.readcal',
          'get-events', '--fixup', date1, date2,
         ]
     print ' '.join(args)
     pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
-            env=os.environ, usePTY=1)
+            env=os.environ, usePTY=0)
 
     def cleanProcessDone(reason, pp):
         """
@@ -88,6 +95,31 @@ def getGvents(date1, date2):
     return d_
 
 
+def remove(href):
+    """
+    Utility fn to un-schedule an event
+    """
+    pp = GVentProtocol()
+
+    args = ['python', '-m', 'afloat.gvent.readcal',
+         'remove-event', href]
+    print ' '.join(args)
+    pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
+            env=os.environ, usePTY=0)
+
+    def cleanProcessDone(reason, pp):
+        """
+        Ignore ProcessDone
+        """
+        reason.trap(ProcessDone)
+        return pp.gvents
+
+    d_ = pp.notifyOnDisconnect()
+    d_.addErrback(cleanProcessDone, pp)
+    d_.addCallback(lambda _: pp.gvents[0])
+    return d_
+
+
 def quickAdd(content):
     """
     Utility fn to schedule a new event with the quick add interface
@@ -95,11 +127,11 @@ def quickAdd(content):
     """
     pp = GVentProtocol()
 
-    args = ['python', '-m', 'afloat.gvent.readcal', 
+    args = ['python', '-m', 'afloat.gvent.readcal',
          'add-event', content]
     print ' '.join(args)
     pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
-            env=os.environ, usePTY=1)
+            env=os.environ, usePTY=0)
 
     def cleanProcessDone(reason, pp):
         """
@@ -121,7 +153,7 @@ def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
     """
     pp = GVentProtocol()
 
-    args = ['python', '-m', 'afloat.gvent.readcal', 
+    args = ['python', '-m', 'afloat.gvent.readcal',
          'update-event', 
          '--paidDate=%s' % (formatDateYMD(paidDate),),
          '--amount=%s' % (newAmount,), 
@@ -130,7 +162,7 @@ def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
         ]
     print ' '.join(args)
     pTransport = reactor.spawnProcess(pp, '/usr/bin/python', args,
-            env=os.environ, usePTY=1)
+            env=os.environ, usePTY=0)
 
     def cleanProcessDone(reason, pp):
         """

@@ -71,6 +71,11 @@ body {
     width: 200px;
 }
 
+.schedulerRight td.cancelButton  {
+    border-right: 0px;
+    cursor: pointer;
+}
+
 .schedulerLeft
 {
     float: left;
@@ -212,4 +217,8 @@ h1, h2, h3, h4 {
 
 .scheduler input[value=Put] {
     float: left;
+}
+
+.strike {
+    text-decoration: line-through;
 }
