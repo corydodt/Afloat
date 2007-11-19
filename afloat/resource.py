@@ -7,7 +7,7 @@ from zope.interface import implements
 
 from nevow import rend, static, url, inevow, vhost, athena, loaders, page
 
-from afloat.util import RESOURCE
+from afloat.util import RESOURCE, days
 
 MONDAY = 1
 FRIDAY = 5
@@ -231,6 +231,13 @@ class Graphs(athena.LiveElement):
         return tag[content]
 
 
+def differentWeek(d1, d2):
+    """True if d1 and d2 are in different weeks of the year (i.e. at least one
+    monday@midnight between them)
+    """
+    return d1.strftime('%U') != d2.strftime('%U')
+
+
 class Scheduler(athena.LiveElement):
     """
     User interface for adding new future transactions
@@ -245,11 +252,28 @@ class Scheduler(athena.LiveElement):
     def scheduled(self, req, tag):
         pgDebit = tag.patternGenerator("debit")
         pgDeposit = tag.patternGenerator("deposit")
+        pgBlank = tag.patternGenerator("blank")
         pg = tag.patternGenerator("contents")
 
+        def putBlank(item):
+            blank = pgBlank()
+            ed = item.expectedDate
+            monday = ed - days(ed.weekday())
+            blank.fillSlots('week', monday.strftime('%m/%d'))
+            tag[blank]
+
         coming = self.report.upcomingScheduled()
+        last = None
+
         for item in coming:
             pat = pg()
+
+            # put a blank row between weeks
+            if last is None:
+                putBlank(item)
+            else:
+                if differentWeek(last.expectedDate, item.expectedDate):
+                    putBlank(item)
 
             pat.fillSlots('amount', formatCurrency(item.amount))
             pat.fillSlots('memo', item.title)
@@ -269,6 +293,8 @@ class Scheduler(athena.LiveElement):
             container.fillSlots('contents', pat)
 
             tag[container]
+
+            last = item
         return tag
 
     @athena.expose

@@ -36,6 +36,10 @@
             debit..
           </n:slot>
         </tr>
+
+        <tr n:pattern="blank" class="blank">
+          <td colspan="5">Week of <n:slot name="week" /></td>
+        </tr>
       </tbody>
     </table>
   </div>
