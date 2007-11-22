@@ -60,6 +60,7 @@ class ScheduledTransaction(object):
     fromAccount = locals.Unicode()
     toAccount = locals.Unicode()
     paidDate = locals.Date()
+    late = locals.Bool()
 
 
 class NetworkLog(object):
@@ -259,43 +260,6 @@ class AfloatReport(object):
             bankTxn.ledgerBalance = txn.ledgerBalance
             self.store.add(bankTxn)
 
-    def getGvents(self, **kw):
-        """
-        Retrieve gvents from afloat.gvent.protocol
-        """
-        account = kw['account']
-
-        date1 = datetime.datetime.today() - days(1)
-        date2 = date1 + days(self.config['lookAheadDays'] + 1)
-
-        d = protocol.getGvents(date1, date2)
-
-        def gotGvents(gvents):
-            for event in gvents:
-                self.importScheduledTransaction(account, event)
-            gventSet = set([g.href for g in gvents])
-            
-            # Look for scheduledtxn items that have disappeared from the
-            # google feed; these should be removed from scheduledtxn
-            log.msg("CHECKING FOR REMOVED GVENTS")
-            ST = ScheduledTransaction
-            scheduled = self.store.find(ST, locals.And( ST.expectedDate >=
-                date1, ST.expectedDate <= date2))
-            schedSet = set([s.href for s in scheduled])
-
-            removedSet = schedSet - gventSet
-            for sched in scheduled:
-                if sched.href in removedSet:
-                    log.msg("*** TRANSACTION DISAPPEARED: %s %s" %
-                            (sched.expectedDate, sched.title))
-                    self.store.remove(sched)
-
-            self.store.commit()
-            print "DONE TALKING TO GOOGLE CALENDAR"
-
-        d.addCallback(gotGvents)
-        return d
-
     def importScheduledTransaction(self, accountId, event):
         """
         Do CRUD operations on gvents we downloaded
@@ -343,6 +307,145 @@ class AfloatReport(object):
         else:
             log.msg("** Already saw %s" % (e.title,))
         return schedTxn
+
+    def getGvents(self, **kw):
+        """
+        Retrieve gvents from afloat.gvent.protocol
+        """
+        account = kw['account']
+
+        date1 = datetime.datetime.today() - days(1)
+        date2 = date1 + days(self.config['lookAheadDays'] + 1)
+
+        d = protocol.getGvents(date1, date2)
+
+        def gotGvents(gvents):
+            for event in gvents:
+                self.importScheduledTransaction(account, event)
+            
+            # Look for scheduledtxn items that have disappeared from the
+            # google feed; these should be removed from scheduledtxn
+            self.purgeRemovals(gvents, date1, date2)
+
+            # look for scheduledtxn items that still have not occurred / are
+            # late.  These should be bubbled forward according to rules.
+            d = self.bubbleForward(gvents)
+
+            return d
+
+        d.addCallback(gotGvents)
+        return d
+
+    def bubbleForward(self, gvents):
+        """
+        Move forward transactions which should have occurred already but didn't
+
+        First move gvents, then move database transactions.
+        """
+        log.msg("BUBBLING FORWARD TRANSACTIONS")
+
+        bubblers = []
+        lates = []
+
+        # anything scheduled for < today, not paid, is a candidate
+        ST = ScheduledTransaction
+        today = datetime.datetime.today().date()
+        candidates = self.store.find(ST, 
+                locals.And(
+                    ST.paidDate == None,
+                    ST.expectedDate < today,
+                    ST.checkNumber == None,
+                ))
+
+        # any candidate which has a check# will be bubbled forward indefinitely
+        checks = self.store.find(ST, 
+                locals.And(
+                    ST.paidDate == None,
+                    ST.expectedDate < today,
+                    ST.checkNumber != None,
+                ))
+
+        bubblers.extend([c for c in checks])
+
+        # all other candidates will be bubbled forward up to 3 days.
+        for t in candidates:
+            if (t.expectedDate - t.originalDate + days(1)).days > 3:
+                lates.append(t)
+            else:
+                bubblers.append(t)
+
+        # any candidate which is not bubbled forward is flagged late
+        for t in lates:
+            t.late = True
+
+        self.store.commit()
+
+        # any candidate which is bubbled forward is edited with a new date,
+        # today
+        rlist = []
+        for t in bubblers:
+            d = self.bubbleOneForward(t)
+            d.addErrback(log.err)
+            rlist.append(d)
+
+        return defer.DeferredList(rlist)
+
+        # TODO ...
+
+        # [Scheduler] on logging in, user is shown all late transactions (no
+        # matter how late).
+
+        # [Scheduler]  all approved transactions are edited so date = originalDate = today.
+
+        # [Scheduler] any transaction not approved is deleted from gvents and scheduledtxn
+        # table
+        
+        # [matchup] if any candidate collides (rescheduled to a day with the same
+        # amount, same keywords), and a transaction is matched on that date,
+        # the candidate with the earliest originalDate is matched
+
+        # [matchup] any late transaction that was approved is immediately rechecked for
+        # PAID status.
+
+        # [matchup] FIXME - if late list has NOT been shown to user in several days, do
+        # we check intervening days for PAID status on approved lates?  To do
+        # so we must ignore any banktxn's that are already matched to a
+        # scheduledtxn on that date.
+
+    def bubbleOneForward(self, txn):
+        """
+        Set a new date on the transaction, and update the event in google
+        """
+        d = protocol.changeDate(txn.href, txn.expectedDate + days(1))
+
+        def gotEvent(event):
+            txn = self.importScheduledTransaction(
+                    self.config['defaultAccount'], event)
+            log.msg("Changed event date and calendar responded: OK, %s" % (event,))
+            return txn
+
+        d.addCallback(gotEvent)
+
+        return d
+        
+    def purgeRemovals(self, gvents, date1, date2):
+        """
+        Remove from the database any gvents that vanished from the calendar
+        """
+        log.msg("CHECKING FOR REMOVED GVENTS")
+        ST = ScheduledTransaction
+        scheduled = self.store.find(ST, locals.And( ST.expectedDate >=
+            date1, ST.expectedDate <= date2))
+        schedSet = set([s.href for s in scheduled])
+        gventSet = set([g.href for g in gvents])
+
+        removedSet = schedSet - gventSet
+        for sched in scheduled:
+            if sched.href in removedSet:
+                log.msg("*** TRANSACTION DISAPPEARED: %s %s" %
+                        (sched.expectedDate, sched.title))
+                self.store.remove(sched)
+        self.store.commit()
 
     def updateAccount(self, account):
         """
@@ -498,15 +601,11 @@ class AfloatReport(object):
 
     def matchup(self):
         """
-        Flag as paid any scheduled transactions that were found in the register
+        Flag as paid, any scheduled transactions that were found in the ledger  
         recently, by matching scheduled titles with bank memos, dates and amounts
         within $0.05
 
-        Next, bubble forward any unmatched transactions; for LATE
-        transactions, remember to ask the user next time for a confirmation or
-        delete.
-
-        Finally fix these items in the google database, setting extended properties
+        Then fix these items in the google database, setting extended properties
         and titles appropriately.
         """
         dl = []
@@ -522,16 +621,15 @@ class AfloatReport(object):
                 pending.amount = matched.amount
                 pending.title = pending.title + '[PAID]'
 
-                print 'Found a matchup on "%s" == "%s"' % (
-                        pending.title, matched.memo)
+                log.msg('Found a matchup on "%s" == "%s"' % (
+                        pending.title, matched.memo))
                 d_ = protocol.putMatchedTransaction(pending.href,
                         pending.paidDate, pending.amount, pending.title)
+                d_.addErrback(log.err)
                 dl.append(d_)
             else:
                 continue
         self.store.commit()
-
-        ## TODO.. bubble txns forward and flag LATE txns
 
         return defer.DeferredList(dl)
 
@@ -582,15 +680,41 @@ class AfloatReport(object):
         """
         Return all accounts as a list
         """
-        qry = self.store.find(Account).order_by(Account.type)
-        return [a for a in qry]
+        rs = self.store.find(Account).order_by(Account.type)
+        return [a for a in rs]
 
     def holds(self, account):
+        """
+        Return all holds as a list
+        """
         rs = self.store.find(Hold,
                 Hold.account==account).order_by(Hold.amount)
-        return rs
+        return [h for h in rs]
+
+    def transactions(self, account, recent=None):
+        """
+        All the ledger transactions within 'recent' days, as list.
+        If 'recent' is None, all the ledger transactions.
+        """
+        if recent is None:
+            return self.store.find(BankTransaction, 
+                    BankTransaction.account == account
+                    ).order_by(
+                    BankTransaction.ledgerDate, BankTransaction.id
+                    )
+        startDate = datetime.datetime.today() - days(recent)
+        rs = self.store.find(BankTransaction, locals.And(
+                BankTransaction.account == account,
+                BankTransaction.ledgerDate >= startDate,
+                )).order_by(
+                BankTransaction.ledgerDate, BankTransaction.id
+                )
+        return [t for t in rs]
 
     def last3Deposits(self, account):
+        """
+        Return the last 3 ledger deposits of any amount
+        """
         rs = self.store.find(BankTransaction,
                 locals.And(
                     BankTransaction.account==account,
@@ -603,8 +727,8 @@ class AfloatReport(object):
 
     def last3BigDebits(self, account):
         """
-        Somewhat arbitrarily returns the last 3 debits of amounts greater than
-        config['bigAmount']
+        Somewhat arbitrarily returns the last 3 ledger debits of amounts
+        greater than config['bigAmount']
         """
         bigAmount = self.config['bigAmount']
         rs = self.store.find(BankTransaction,
@@ -615,25 +739,6 @@ class AfloatReport(object):
         ret = rs.order_by(locals.Desc(BankTransaction.ledgerDate),
                     locals.Desc(BankTransaction.id))[:3]
         return ret
-
-    def transactions(self, account, recent=None):
-        """
-        All the transactions within 'recent' days.  If recent is None, all the
-        transactions.
-        """
-        if recent is None:
-            return self.store.find(BankTransaction, 
-                    BankTransaction.account == account
-                    ).order_by(
-                    BankTransaction.ledgerDate, BankTransaction.id
-                    )
-        startDate = datetime.datetime.today() - days(recent)
-        return self.store.find(BankTransaction, locals.And(
-                BankTransaction.account == account,
-                BankTransaction.ledgerDate >= startDate,
-                )).order_by(
-                BankTransaction.ledgerDate, BankTransaction.id
-                )
 
 
 def createTables():

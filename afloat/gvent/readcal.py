@@ -10,7 +10,7 @@ from gdata.calendar.service import CalendarEventQuery, CalendarService
 from gdata import calendar
 from gdata.service import RequestError
 
-from afloat.util import RESOURCE
+from afloat.util import RESOURCE, days
 
 CALENDAR_NAMES = {
         'finance': 'bd7j228bhdt527n0o4pk8dhf50@group.calendar.google.com'
@@ -386,7 +386,6 @@ class GetEvents(usage.Options):
             formatted = formatEventString(e)
             if formatted:
                 print formatted
-        sys.stdout.flush()
 
     def getEvents(self, client, date1, date2):
         client.password = self['gventPassword']
@@ -538,8 +537,11 @@ class UpdateEvent(usage.Options):
             changed = 1
 
         if self['expectedDate']:
-            import pdb; pdb.set_trace()
-            # TODO - change event.when
+            # FIXME - break recurrence here
+            start = parseDateYMD(self['expectedDate'])
+            end = start + days(1)
+            ev.when[0].start_time = self['expectedDate']
+            ev.when[0].end_time = formatDateYMD(end)
             changed = 1
 
         if self['title']:

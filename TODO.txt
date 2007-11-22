@@ -11,3 +11,6 @@ Minor:
 
 - enforce that updates must be successfully received by google calendar before
   any related database transactions are modified
+
+- Amounts of the form $-999 are interpreted as DEPOSITS when they come at the
+  beginning of a line in the scheduler widget

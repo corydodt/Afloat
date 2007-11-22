@@ -29,7 +29,8 @@ CREATE TABLE scheduledtxn (
     originalDate DATETIME,
     fromAccount VARCHAR NOT NULL,
     toAccount VARCHAR,
-    paidDate DATETIME
+    paidDate DATETIME,
+    late BOOLEAN
 );
 
 CREATE TABLE networklog (
