@@ -314,7 +314,7 @@ class AfloatReport(object):
         """
         account = kw['account']
 
-        date1 = datetime.datetime.today() - days(1)
+        date1 = datetime.datetime.today() - days(7)
         date2 = date1 + days(self.config['lookAheadDays'] + 1)
 
         d = protocol.getGvents(date1, date2)
@@ -369,7 +369,7 @@ class AfloatReport(object):
 
         # all other candidates will be bubbled forward up to 3 days.
         for t in candidates:
-            if (t.expectedDate - t.originalDate + days(1)).days > 3:
+            if (today - t.originalDate).days > 3:
                 lates.append(t)
             else:
                 bubblers.append(t)
@@ -416,7 +416,8 @@ class AfloatReport(object):
         """
         Set a new date on the transaction, and update the event in google
         """
-        d = protocol.changeDate(txn.href, txn.expectedDate + days(1))
+        today = datetime.datetime.today()
+        d = protocol.changeDate(txn.href, today)
 
         def gotEvent(event):
             txn = self.importScheduledTransaction(
@@ -550,15 +551,18 @@ class AfloatReport(object):
 
         today = datetime.date.today()
         periodEnd = today + days(self.config['lookAheadDays'])
+        periodStart = today - days(1)
 
         ST = ScheduledTransaction
         foundFrom = self.store.find(ST,
                 locals.And(
+                    ST.expectedDate >= periodStart,
                     ST.expectedDate <= periodEnd,
                     ST.fromAccount == unicode(account),
                     )).order_by(ST.expectedDate)
         foundTo = self.store.find(ST,
                 locals.And(
+                    ST.expectedDate >= periodStart,
                     ST.expectedDate <= periodEnd,
                     ST.toAccount == unicode(account),
                     )).order_by(ST.expectedDate)
