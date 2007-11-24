@@ -1,4 +1,4 @@
-1. Handle LATE and unclosed scheduled transactions by bubbling forward etc.
+1. Handle LATE transactions in the UI
 
 2. Burn rate computation and graph
 
@@ -14,3 +14,16 @@ Minor:
 
 - Amounts of the form $-999 are interpreted as DEPOSITS when they come at the
   beginning of a line in the scheduler widget
+
+- fix all places where recurrence should be checked and broken - test with
+  recurring events
+
+- flag transactions as late even when they are new, as they come back
+
+- stop using DeanEdwards
+
+- pressing 'enter' on the page with nothing typed into the scheduler area
+  causes NoAmountError
+
+- when an item lands on the financial calendar with no amount, getGvents
+  throws an exception
