@@ -502,6 +502,7 @@ class UpdateEvent(usage.Options):
             ['amount', None, None, 'Change the amount',],
             ['title', None, None, 'Change the title',],
             ['expectedDate', None, None, 'Change the expectedDate',],
+            ['originalDate', None, None, 'Change the originalDate',],
             ]
     def parseArgs(self, uri):
         execfile(RESOURCE('../config.py'), self)
@@ -542,6 +543,12 @@ class UpdateEvent(usage.Options):
             end = start + days(1)
             ev.when[0].start_time = self['expectedDate']
             ev.when[0].end_time = formatDateYMD(end)
+            changed = 1
+
+        if self['originalDate']:
+            prop = calendar.ExtendedProperty(name=EVENT_ORIGINALDATE,
+                    value=self['originalDate'])
+            ev.extended_property.append(prop)
             changed = 1
 
         if self['title']:
