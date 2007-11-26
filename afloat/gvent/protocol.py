@@ -51,6 +51,7 @@ class GVentProtocol(ProcessProtocol):
 
     def processEnded(self, reason):
         """Notify our disconnects"""
+        print '** ending process'
         if self.errors:
             log.msg('*** readcal errored out ***', self.errors)
             for d in self.disconnectDeferreds:
@@ -58,6 +59,7 @@ class GVentProtocol(ProcessProtocol):
         else:
             for d in self.disconnectDeferreds:
                 d.callback(reason)
+        print '** ended process'
 
     def notifyOnDisconnect(self):
         d = defer.Deferred()
@@ -81,20 +83,24 @@ def pythonProcessRunner(after, *afterArgs, **afterKwargs):
     def runner(fn):
         def decorated(*fna, **fnkw):
             processArgs = fn(*fna, **fnkw)
+            print '** In pythonProcessRunner: .. ', ' '.join(processArgs)
             pp = GVentProtocol()
             pTransport = reactor.spawnProcess(pp, '/usr/bin/python', processArgs,
                     env=os.environ, usePTY=0)
+            print '** spawned process'
+            d_ = pp.notifyOnDisconnect()
 
             def cleanProcessDone(reason, pp):
                 """
                 Ignore ProcessDone
                 """
+                print '** cleanup after process'
                 reason.trap(ProcessDone)
                 return pp
 
-            d_ = pp.notifyOnDisconnect()
             d_.addErrback(cleanProcessDone, pp)
             d_.addCallback(after, *afterArgs, **afterKwargs)
+            print '** returning from', fn
             return d_
         return decorated
     return runner
@@ -113,7 +119,6 @@ def getGvents(date1, date2):
     args = ['python', '-m', 'afloat.gvent.readcal',
          'get-events', '--fixup', date1, date2,
         ]
-    print ' '.join(args)
     return args
 
 
@@ -124,7 +129,6 @@ def remove(href):
     """
     args = ['python', '-m', 'afloat.gvent.readcal',
          'remove-event', href]
-    print ' '.join(args)
     return args
 
 
@@ -136,7 +140,6 @@ def quickAdd(content):
     """
     args = ['python', '-m', 'afloat.gvent.readcal',
          'add-event', content]
-    print ' '.join(args)
     return args
 
 
@@ -153,16 +156,20 @@ def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
          '--title=%s' % (str(newTitle),),
          str(uri), 
         ]
-    print ' '.join(args)
     return args
 
 
 @pythonProcessRunner(lambda pp: pp.gvents[0])
-def changeDate(uri, newDate):
+def changeDate(uri, newDate, original=True):
+    """
+    Change the date on a scheduled transaction.  When original=True, change
+    the originalDate as well as the expectedDate
+    """
+    dt = formatDateYMD(newDate)
     args = ['python', '-m', 'afloat.gvent.readcal',
          'update-event', 
-         '--expectedDate=%s' % (formatDateYMD(newDate),),
+         '--expectedDate=%s' % (dt,),
+         '--originalDate=%s' % (dt,),
          str(uri), 
         ]
-    print ' '.join(args)
     return args
