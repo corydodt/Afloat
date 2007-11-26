@@ -71,6 +71,23 @@ Afloat.Summary.methods( // {{{
             var partner = node.select('[rev=' + rel + ']')[0];
             new Tip(a, partner.innerHTML, TIPCONFIG);
         });
+        var updateNode = node.select(".debugUpdate"); 
+        if (updateNode.length > 0) {
+            Event.observe(updateNode[0], 'click',
+                function(ev) { self.debugUpdate(ev); }
+            );
+        }
+    }, // }}}
+
+    function debugUpdate(self, event) { // {{{
+        event.stopPropagation();
+        event.preventDefault();
+        self.callRemote("updateNow").addCallback(function (_done) {
+            alert("Updated calendar and ofx");
+            window.history.go(0);
+        });
+        var spinner = Afloat.newSpinner("Updating...");
+        event.target.replace(spinner);
     } // }}}
 ); // }}}
 

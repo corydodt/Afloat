@@ -198,6 +198,19 @@ class Summary(athena.LiveElement):
 
         return tag
 
+    @page.renderer
+    def debugUpdate(self, req, tag):
+        if self.report.config['debug']:
+            return tag
+        return []
+
+    @athena.expose
+    def updateNow(self):
+        """
+        Immediately get 
+        """
+        assert self.report.config['debug']
+        return self.report.update()
 
 class Graphs(athena.LiveElement):
     """

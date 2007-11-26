@@ -1,5 +1,8 @@
 <div xmlns:n="http://nevow.com/ns/nevow/0.1" n:render="liveElement" class=
     "summary">
+
+    <div class="debugUpdate" n:render="debugUpdate"><a href="#">Update Now</a></div>
+
     <table>
       <thead><td><h3>Balances</h3></td><td>Ledger</td><td>Available</td><td /><td /></thead>
       <tbody n:render="summary">

@@ -150,6 +150,8 @@ class AfloatReport(object):
         _gventDeferred.addCallback(lambda _: self.matchup())
         _gventDeferred.addErrback(log.err)
 
+        return _gventDeferred
+
     def getOfx(self, request, **kw):
         """
         Retrieve, then parse, the OFX into the storm database
