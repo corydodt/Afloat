@@ -1,0 +1,49 @@
+<div xmlns:n="http://nevow.com/ns/nevow/0.1" n:render="liveElement" class=
+    "rescheduledTransactions" id="rescheduledTransactions">
+
+    <n:invisible n:render="forgottenTransactions">
+    <p>The following transactions have been forgotten.</p>
+
+    <table class="schedulerTable">
+      <thead>
+        <td>Amount</td>
+        <td>Originally<br />scheduled on</td>
+        <td class="memo">Memo</td>
+      </thead>
+      <tbody>
+        <n:slot name="rows">
+          <tr n:pattern="forgottenRow">
+            <td><n:slot name="amount" /></td>
+            <td class="strike"><n:slot name="originalDate" /></td>
+            <td class="memo"><n:slot name="title" /></td>
+          </tr>
+        </n:slot>
+      </tbody>
+    </table>
+    </n:invisible>
+
+    <n:invisible n:render="rescheduledTransactions">
+    <p>The following transactions have been rescheduled.</p>
+
+    <table class="schedulerTable">
+      <thead>
+        <td>Amount</td>
+        <td>New date</td>
+        <td class="memo">Memo</td>
+      </thead>
+      <tbody >
+        <n:slot name="rows">
+          <tr n:pattern="rescheduledRow">
+            <td><n:slot name="amount" /></td>
+            <td>today</td>
+            <td class="memo"><n:slot name="title" /></td>
+          </tr>
+        </n:slot>
+      </tbody>
+    </table>
+    </n:invisible>
+
+    <form class="schedulerForm"><input type="submit" value="OK" /></form>
+
+<!-- vi:set ft=html: -->
+</div>

@@ -4,6 +4,8 @@ Web resources
 import datetime
 
 from zope.interface import implements
+from twisted.internet import defer
+from twisted.python import log
 
 from nevow import rend, static, url, inevow, vhost, athena, loaders, page
 
@@ -29,8 +31,8 @@ class DataXML(rend.Page):
 
         today = datetime.datetime.today().date()
 
-        days = self.report.balanceDays(self.account.id)
-        for n, day in enumerate(days):
+        bdays = self.report.balanceDays(self.account.id)
+        for n, day in enumerate(bdays):
             if day.date == today:
                 pat = pgToday()
             else:
@@ -238,6 +240,89 @@ def differentWeek(d1, d2):
     return d1.strftime('%U') != d2.strftime('%U')
 
 
+class RescheduleReport(athena.LiveElement):
+    """
+    Display the transactions that will be rescheduled/killed
+    """
+    docFactory = loaders.xmlfile(RESOURCE("templates/RescheduleReport"))
+
+    def __init__(self, report, toForget, toReschedule):
+        self.report = report
+        self.toForget = toForget
+        self._forgotten = []
+        self.toReschedule = toReschedule
+        self._rescheduled = []
+
+    @page.renderer
+    def forgottenTransactions(self, req, tag):
+        pg = tag.patternGenerator("forgottenRow")
+        rows = []
+        if self._forgotten:
+            for txn in self._forgotten:
+                pat = pg()
+                pat.fillSlots('amount', formatCurrency(txn.amount))
+                pat.fillSlots('title', txn.title)
+                pat.fillSlots('originalDate', formatDateWeekday(txn.originalDate))
+                rows.append(pat)
+            tag.fillSlots('rows', rows)
+            return tag
+        return []
+
+    @page.renderer
+    def rescheduledTransactions(self, req, tag):
+        pg = tag.patternGenerator("rescheduledRow")
+        rows = []
+        if self._rescheduled:
+            for txn in self._rescheduled:
+                pat = pg()
+                pat.fillSlots('amount', formatCurrency(txn.amount))
+                pat.fillSlots('title', txn.title)
+                rows.append(pat)
+            tag.fillSlots('rows', rows)
+            return tag
+        return []
+
+    def forgetOneTransaction(self, href):
+        today = datetime.datetime.today().date()
+        d = self.report.removeItem(href)
+        log.msg("** Started forgetOne (in resource.RescheduleReport)")
+
+        def changed(txn):
+            log.msg('** forgot %s' % (txn.title,))
+            self._forgotten.append(txn)
+
+        d.addCallback(changed)
+        return d
+
+    def rescheduleOneTransaction(self, href):
+        today = datetime.datetime.today().date()
+        d = self.report.rescheduleOne(href)
+        log.msg("** Started rescheduleOne (in resource.RescheduleReport)")
+
+        def changed(txn):
+            log.msg('** rescheduled %s' % (txn.title,))
+            self._rescheduled.append(txn)
+
+        d.addCallback(changed)
+        return d
+
+    def rescheduleThings(self):
+        """
+        Do all the rescheduling and descheduling required to render this.
+        This is an EVIL HACK.  I should just be able to do those things inline
+        as I call the render methods, but when I do, CPU spikes up to 100%.
+        This workaround instead front-loads the deferred, allowing me to
+        return a RescheduleReport (from Scheduler.massUnschedule) that is able
+        to be rendered synchronously.
+        """
+        dl = []
+        for href in self.toReschedule:
+            dl.append(self.rescheduleOneTransaction(href))
+        for href in self.toForget:
+            dl.append(self.forgetOneTransaction(href))
+        return defer.DeferredList(dl, fireOnOneErrback=True)
+
+
 class Scheduler(athena.LiveElement):
     """
     User interface for adding new future transactions
@@ -247,6 +332,19 @@ class Scheduler(athena.LiveElement):
     def __init__(self, report, *a, **kw):
         self.report = report
         super(Scheduler, self).__init__(*a, **kw)
+
+    @page.renderer
+    def lateTransactions(self, req, tag):
+        pg = tag.patternGenerator("lateRow")
+        lates = self.report.lateTransactions()
+        for late in lates:
+            tr = pg()
+            tr.fillSlots('amount', formatCurrency(late.amount))
+            tr.fillSlots('originalDate', formatDateWeekday(late.originalDate))
+            tr.fillSlots('title', late.title)
+            tr.fillSlots('href', late.href)
+            tag[tr]
+        return tag
 
     @page.renderer
     def scheduled(self, req, tag):
@@ -305,6 +403,18 @@ class Scheduler(athena.LiveElement):
         d = self.report.removeItem(href)
         d.addCallback(lambda txn: u"OK")
         return d
+
+    @athena.expose
+    def massUnschedule(self, toForget, toReschedule):
+        """
+        @arg toForget: a list of the scheduled txns to forget
+        @arg toReschedule: a list of the scheduled txns to reschedule
+        """
+        rr = RescheduleReport(self.report, toForget, toReschedule)
+        rr.setFragmentParent(self)
+        d_ = rr.rescheduleThings()
+        d_.addCallback(lambda _done: rr)
+        return d_
 
     @athena.expose
     def schedule(self, value):

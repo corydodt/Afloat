@@ -1,15 +1,43 @@
 <div xmlns:n="http://nevow.com/ns/nevow/0.1" n:render="liveElement" class=
     "scheduler">
+
+  <div class="lateTransactions" id="lateTransactions">
+    <p>The following unpaid transactions are late.</p>
+    <p>Put a check by each transaction you want to forget (never
+    reschedule).</p>
+    <table class="schedulerTable">
+      <thead>
+        <td>Amount</td>
+        <td>Originally<br />scheduled on</td>
+        <td class="memo">Memo</td>
+        <td class="rowControl">&#160;</td>
+      </thead>
+      <tbody n:render="lateTransactions">
+        <tr n:pattern="lateRow" class="lateRow">
+          <td><n:slot name="amount" /></td>
+          <td><n:slot name="originalDate" /></td>
+          <td class="memo"><n:slot name="title" /></td>
+          <td class="rowControl"><input type="checkbox" title="Unschedule"><n:attr name=
+            "name"><n:slot name="href" /></n:attr></input></td>
+        </tr>
+      </tbody>
+    </table>
+    <form name="unscheduleThese" class="schedulerForm">
+      <input type="submit" name="rescheduler" value="Reschedule" />
+    </form>
+  </div>
+
   <div class="schedulerLeft">
     <h3>Schedule a Transaction</h3>
     <form name="scheduler">
-      <input type="text" id='newItem' name="newItem" />
+      <input type="text" id='newItem' name="newItem" class="gray" />
       <input type="submit" id="submit" value="Go" />
     </form>
   </div>
+
   <div class="schedulerRight">
     <h3>On the Bubble</h3>
-    <table>
+    <table class="schedulerTable">
       <tbody n:render="scheduled">
 
         <n:invisible n:pattern="contents">
@@ -20,7 +48,7 @@
             <td n:pattern="statusPaid" class="statusPaid">PAID</td>
             <td n:pattern="statusPending" class="statusPending">pending</td>
           </n:slot>
-          <td class="cancelButton" title="Delete this"><n:attr name=
+          <td class="rowControl" title="Delete this"><n:attr name=
             "rev"><n:slot name="href" /></n:attr><img src=
             "/static/cancel.png" /></td>
         </n:invisible>

@@ -264,7 +264,7 @@ class AfloatReport(object):
         """
         Do CRUD operations on gvents we downloaded
         """
-        schedTxn = self.store.get(ScheduledTransaction, event.href)
+        schedTxn = self.singleScheduled(event.href)
 
         e = event
 
@@ -376,6 +376,7 @@ class AfloatReport(object):
 
         # any candidate which is not bubbled forward is flagged late
         for t in lates:
+            log.msg("** LATE: %s" % (t.title,))
             t.late = True
 
         self.store.commit()
@@ -412,6 +413,14 @@ class AfloatReport(object):
         # so we must ignore any banktxn's that are already matched to a
         # scheduledtxn on that date.
 
+    def lateTransactions(self):
+        """
+        Return all late transactions, as a list
+        """
+        rs = self.store.find(ScheduledTransaction, ScheduledTransaction.late
+                == True)
+        return [l for l in rs]
+
     def bubbleOneForward(self, txn):
         """
         Set a new date on the transaction, and update the event in google
@@ -423,6 +432,27 @@ class AfloatReport(object):
             txn = self.importScheduledTransaction(
                     self.config['defaultAccount'], event)
             log.msg("Changed event date and calendar responded: OK, %s" % (event,))
+            return txn
+
+        d.addCallback(gotEvent)
+
+        return d
+
+    def rescheduleOne(self, href):
+        """
+        Set a new expectedDate and originalDate on a transaction
+        """
+        today = datetime.datetime.today()
+        d = protocol.changeDate(href, today, original=True)
+        log.msg("** Started changeDate (in AfloatReport.rescheduleOne")
+
+        def gotEvent(event):
+            log.msg("** About to change ORIGINAL date (in AfloatReport.rescheduleOne/gotEvent")
+            txn = self.importScheduledTransaction(
+                    self.config['defaultAccount'], event)
+            txn.late = None
+            self.store.commit()
+            log.msg("Changed event ORIGINAL date and calendar responded: OK, %s" % (event,))
             return txn
 
         d.addCallback(gotEvent)
@@ -592,7 +622,7 @@ class AfloatReport(object):
         d = protocol.remove(href)
 
         def gotRemovedEvent(event):
-            txn = self.store.get(ScheduledTransaction, event.href)
+            txn = self.singleScheduled(href)
             assert txn is not None
             self.store.remove(txn)
             self.store.commit()
@@ -743,6 +773,12 @@ class AfloatReport(object):
         ret = rs.order_by(locals.Desc(BankTransaction.ledgerDate),
                     locals.Desc(BankTransaction.id))[:3]
         return ret
+
+    def singleScheduled(self, href):
+        """
+        Return the scheduled transaction corresponding to href
+        """
+        return self.store.get(ScheduledTransaction, href)
 
 
 def createTables():

@@ -59,19 +59,25 @@ body {
     padding-left: 1em;
 }
 
-.schedulerRight td
+table.schedulerTable td
 {
     border-width: 0px 1px 0px 1px;
     border-color: #618059;
     text-align: right;
 }
 
-.schedulerRight td.memo {
+table.schedulerTable thead td
+{
+    border-bottom: 1px solid #618059;
+    color: #618059;
+}
+
+table.schedulerTable td.memo {
     text-align: left;
     width: 200px;
 }
 
-.schedulerRight td.cancelButton  {
+table.schedulerTable td.rowControl {
     border-right: 0px;
     cursor: pointer;
 }
@@ -231,4 +237,36 @@ h1, h2, h3, h4 {
 }
 
 .theSpinner {
+}
+
+
+/* Control.Modal styles */
+#modal_container {  
+    padding:5px;  
+    background-color:#fff;  
+    border:2px outset black;
+    overflow:auto;  
+    font-family:"Lucida Grande",Verdana;  
+    font-size:12px;  
+    color:#333;  
+    text-align:left;  
+} 
+ 
+#modal_overlay {  
+    background-color:#c2d7ce;  
+}  
+
+.lateTransactions {
+    display: none
+}
+
+form.schedulerForm {
+    text-align: right;
+}
+
+.rescheduledTransactions {
+}
+
+.gray {
+    color: #AAA;
 }

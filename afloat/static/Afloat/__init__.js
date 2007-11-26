@@ -1,8 +1,7 @@
 // import Nevow.Athena
-// import DeanEdwards
 // import Divmod.Defer
 
-Afloat.newSpinner = function (message) {
+Afloat.newSpinner = function (message) { // {{{
     if (message === undefined) message = '';
 
     var spinner = document.documentElement.select('.theSpinner')[0].cloneNode(true);
@@ -10,7 +9,22 @@ Afloat.newSpinner = function (message) {
     spinner.show();
 
     return spinner;
-}
+} // }}}
+
+var LightboxConfig = Class.create({ // {{{
+    opacity:0.7,
+    fade:true, 
+    fadeDuration: 0.7
+}); // }}}
+
+Afloat.modalFromNode = function (node) { // {{{
+    // copy the content of node into a modal dialog (lightbox)
+    var config = new LightboxConfig();
+    config.contents = node.innerHTML;
+    var modal = new Control.Modal(null, config);
+    modal.open();
+    return modal;
+} // }}}
 
 Afloat.Graphs = Nevow.Athena.Widget.subclass('Afloat.Graphs');
 Afloat.Graphs.methods( // {{{
@@ -32,12 +46,12 @@ Afloat.Graphs.methods( // {{{
     } // }}}
 ); // }}}
 
-Afloat.Graphs.selectGraph = function (accountType) {
+Afloat.Graphs.selectGraph = function (accountType) { // {{{
     $$(".moneys").each(function (n) { n.hide() });
     $$(".graph-" + accountType)[0].parentNode.show()
-}
+} // }}}
 
-var TIPCONFIG = {
+var TIPCONFIG = { // {{{
     fixed: true,
     closeButton: false,
     hook: { target: 'bottomRight', tip: 'bottomLeft' },
@@ -46,7 +60,7 @@ var TIPCONFIG = {
     effect: 'appear',
     duration: 0.2
     // hideOn: { element: 'closeButton' }
-};
+}; // }}}
 
 Afloat.Summary = Nevow.Athena.Widget.subclass('Afloat.Summary');
 Afloat.Summary.methods( // {{{
@@ -66,10 +80,9 @@ Afloat.Scheduler.methods( // {{{
         Afloat.Scheduler.upcall(self, '__init__', node);
         var entryBox = self.nodeById('newItem');
         entryBox.value = 'Enter a new scheduled item';
-        entryBox.select();
-        node.select('.schedulerLeft h3')[0].focus();
         function clearer(ev) {
             ev.target.clear();
+            ev.target.removeClassName('gray');
             Event.stopObserving(ev.target, 'focus', clearer);
             Event.stopObserving(ev.target, 'click', clearer);
         }
@@ -81,15 +94,46 @@ Afloat.Scheduler.methods( // {{{
         Event.observe(go, 'click', function (e) { self.schedule(e) });
 
         // make the cancel button's hover display strikethrough
-        node.select('.cancelButton').each( function (n) {
+        node.select('.schedulerTable .rowControl').each( function (n) {
             Event.observe(n, 'mouseover', function (e) { 
                 n.parentNode.addClassName('strike');
             });
             Event.observe(n, 'mouseout', function (e) { 
                 n.parentNode.removeClassName('strike');
             });
-            Event.observe(n, 'click', function (e) { self.unschedule(e, n) });
+            Event.observe(n, 'click', function (e) { 
+                self.unschedule(e, n);
+            });
         });
+
+        // when there are late transactions, display a UI to reschedule them
+        var lateNode = self.nodeById('lateTransactions');
+        if (lateNode.select('.lateRow').length > 0) {
+            var modal = Afloat.modalFromNode(lateNode);
+
+            var modalBox = $('modal_container');
+            modalBox.select('.rowControl input').each(function (n) {
+                    Event.observe(n, 'click', function (e) {
+                        var row = n.parentNode.parentNode;
+                        if (n.checked) {
+                            row.addClassName('strike');
+                        } else {
+                            row.removeClassName('strike');
+                        }
+                    });
+            });
+
+            var unscheduleForm = modalBox.select('form')[0];
+            Event.observe(unscheduleForm, 'submit', function (e) { self.massUnschedule(e, modal) });
+        }
+        //
+        // FIXME - prevent the user from closing the modal by clicking outside
+        // of it
+        //
+    }, // }}}
+
+    function gotReport(self, report) { // {{{
+        alert(report);
     }, // }}}
 
     function schedule(self, event) { // {{{
@@ -112,6 +156,38 @@ Afloat.Scheduler.methods( // {{{
         return d;
     }, // }}}
 
+    function massUnschedule(self, event, modalDialog) { // {{{
+        event.stopPropagation();
+        event.preventDefault();
+        var modalBox = $('modal_container');
+        var forgets = [];
+        var keeps = [];
+        modalBox.select('.rowControl input').each(function (n) {
+                if (n.checked) {
+                    forgets.push(n.name);
+                } else {
+                    keeps.push(n.name);
+                }
+        });
+
+        var d = self.callRemote("massUnschedule", forgets, keeps);
+        var spinner = Afloat.newSpinner('Rescheduling');
+        modalBox.select('form')[0].replace(spinner);
+
+        d.addCallback(function (winfo) {
+            modalDialog.close();
+            if (winfo) {
+                var d = self.addChildWidgetFromWidgetInfo(winfo);
+                d.addCallback(function (w) {
+                    Afloat.modalFromNode(w.node);
+                });
+            }
+            return null;
+        });
+
+        return d;
+    }, // }}}
+
     function unschedule(self, event, target) { // {{{
         var n = target;
         var p = n.parentNode;
@@ -125,8 +201,11 @@ Afloat.Scheduler.methods( // {{{
                     // reload the page
                     window.history.go(0);
                 }
+                return null;
             });
         }
         return d;
     } // }}}
 ); // }}}
+
+// vim:set foldmethod=marker:
