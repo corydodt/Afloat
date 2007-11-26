@@ -285,7 +285,7 @@ X                                                             /users.stmt/trnbal
 
     def printDebug(self, s):
         if self.debug:
-            print s
+            print >>sys.stderr, s
 
 
 def parseCurrency(s):
