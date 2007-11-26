@@ -4,6 +4,10 @@
 
 Minor:
 
+- stop using DeanEdwards
+
+- link to call getGvents manually (for testing)
+
 - show future debits from savings / clean up defaultAccount stuff
 
 - way to correct errors in the database - i.e. when something gets marked PAID
@@ -26,16 +30,9 @@ Minor:
   When page refreshes, I should immediately get the late transactions dialog.
     Instead I get the normal page, with no hint of the late transaction.
 
-- stop using DeanEdwards
-
-- pressing 'enter' on the page with nothing typed into the scheduler area
-  causes NoAmountError
-
 - when an item lands on the financial calendar with no amount, getGvents
   throws an exception. Reproduce: 1. Use google directly to add an item with
     no numbers  2. restart server so getGvents gets called 3.  observe, an
     exception.
     
-- link to call getGvents manually (for testing)
-
 - fix caching of javascript and images from static.. max-age=0??

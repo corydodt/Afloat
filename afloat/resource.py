@@ -10,6 +10,7 @@ from twisted.python import log
 from nevow import rend, static, url, inevow, vhost, athena, loaders, page
 
 from afloat.util import RESOURCE, days
+from afloat.gvent.readcal import NoAmountError, findAmount
 
 MONDAY = 1
 FRIDAY = 5
@@ -421,6 +422,8 @@ class Scheduler(athena.LiveElement):
         """
         Put a new item on the google calendar
         """
+        if findAmount(value) is None:
+            raise NoAmountError(value)
         d = self.report.quickAddItem(value)
         d.addCallback(lambda txn: u"OK")
         return d

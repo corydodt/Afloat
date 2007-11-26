@@ -79,7 +79,8 @@ Afloat.Scheduler.methods( // {{{
     function __init__(self, node, accounts) { // {{{
         Afloat.Scheduler.upcall(self, '__init__', node);
         var entryBox = self.nodeById('newItem');
-        entryBox.value = 'Enter a new scheduled item';
+        self._defaultText = 'Enter a new scheduled item';
+        entryBox.value = self._defaultText;
         function clearer(ev) {
             ev.target.clear();
             ev.target.removeClassName('gray');
@@ -141,11 +142,21 @@ Afloat.Scheduler.methods( // {{{
         event.preventDefault();
         var newItem = self.nodeById('newItem');
         var val = newItem.value;
+        if (val == '' || val == self._defaultText) {
+            return;
+        }
+
         var d = self.callRemote("schedule", val);
 
         // install a spinner over the form
         var spinner = Afloat.newSpinner("Creating new item \"" + val + "\"");
         newItem.parentNode.replace(spinner);
+
+        d.addErrback(function (err, origNode) {
+            spinner.replace(origNode);
+            alert(err);
+        }, 
+            newItem.parentNode);
 
         d.addCallback(function (ret) {
             if (ret == 'OK') {
