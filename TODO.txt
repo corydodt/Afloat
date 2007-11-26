@@ -1,36 +1,32 @@
-1. Handle LATE transactions in the UI
-
-2. Burn rate computation and graph
+1. Burn rate computation and graph
 
 Minor:
-
-- link to call getGvents manually (for testing)
-
-- show future debits from savings / clean up defaultAccount stuff
-
-- way to correct errors in the database - i.e. when something gets marked PAID
-  but google calendar never saw it (does this still happen?
-    importScheduledTransaction does some of this now..)
 
 - enforce that updates must be successfully received by google calendar before
   any related database transactions are modified (does this still happen? 
     check each call to protocol.something and see if related database commits
     happen only after success)
 
-- Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
-  when they come at the beginning of a line in the scheduler widget
-
-- fix all places where recurrence should be checked and broken - test with
-  recurring events
-
 - flag transactions as late even when they are new, as they come back.
   Reproduce: 1. Use scheduler widget to add a new event, 2 weeks ago  2.
   When page refreshes, I should immediately get the late transactions dialog.
     Instead I get the normal page, with no hint of the late transaction.
 
+- Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
+  when they come at the beginning of a line in the scheduler widget
+
 - when an item lands on the financial calendar with no amount, getGvents
   throws an exception. Reproduce: 1. Use google directly to add an item with
-    no numbers  2. restart server so getGvents gets called 3.  observe, an
+    no numbers  2. restart server so getGvents gets called  3. observe, an
     exception.
     
+- way to correct errors in the database - i.e. when something gets marked PAID
+  but google calendar never saw it (does this still happen?
+    importScheduledTransaction does some of this now..)
+
 - fix caching of javascript and images from static.. max-age=0??
+
+- fix all places where recurrence should be checked and broken - test with
+  recurring events
+
+- show future debits from savings / clean up defaultAccount stuff
