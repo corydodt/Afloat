@@ -419,7 +419,6 @@ class ScrubEvents(GetEvents):
         # process each event according to command-line options
         for e in feed.entry:
             if e.extended_property:
-                # print the event for other programs to parse
                 self.scrubEvent(client, e)
 
     def scrubEvent(self, client, event):
