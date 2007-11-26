@@ -4,8 +4,6 @@
 
 Minor:
 
-- stop using DeanEdwards
-
 - link to call getGvents manually (for testing)
 
 - show future debits from savings / clean up defaultAccount stuff
