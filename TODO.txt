@@ -1,11 +1,6 @@
 1. Burn rate computation and graph
 
 Minor:
-
-- when an item lands on the financial calendar with no amount, getGvents
-  throws an exception. Reproduce: 1. Use google directly to add an item with
-    no numbers  2. restart server so getGvents gets called  3. observe, an
-    exception.
     
 - fix all places where recurrence should be checked and broken - test with
   recurring events

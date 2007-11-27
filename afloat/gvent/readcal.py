@@ -374,7 +374,9 @@ class GetEvents(usage.Options):
                 try:
                     fixupEvent(client, e)
                 except NoAmountError:
-                    pass
+                    # missing amount -> not a real event, don't even attempt
+                    # to handle it
+                    continue
                 except RequestError:
                     # Instances of recurring events may have cruft and
                     # gremlins. Ignore errors on them.  Raise on others.
