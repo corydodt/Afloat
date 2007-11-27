@@ -2,24 +2,24 @@
 
 Minor:
 
-- scheduler table sometimes gets off by a few pixels and floats down to the
-  next line
-
-- Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
-  when they come at the beginning of a line in the scheduler widget
-
 - when an item lands on the financial calendar with no amount, getGvents
   throws an exception. Reproduce: 1. Use google directly to add an item with
     no numbers  2. restart server so getGvents gets called  3. observe, an
     exception.
     
+- fix all places where recurrence should be checked and broken - test with
+  recurring events
+
+- Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
+  when they come at the beginning of a line in the scheduler widget
+
+- scheduler table sometimes gets off by a few pixels and floats down to the
+  next line
+
 - way to correct errors in the database - i.e. when something gets marked PAID
   but google calendar never saw it (does this still happen?
     importScheduledTransaction does some of this now..)
 
 - fix caching of javascript and images from static.. max-age=0??
-
-- fix all places where recurrence should be checked and broken - test with
-  recurring events
 
 - show future debits from savings / clean up defaultAccount stuff
