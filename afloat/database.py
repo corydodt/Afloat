@@ -404,9 +404,6 @@ class AfloatReport(object):
         # amount, same keywords), and a transaction is matched on that date,
         # the candidate with the earliest originalDate is matched
 
-        # [matchup] any late transaction that was approved is immediately rechecked for
-        # PAID status.
-
         # [matchup] FIXME - if late list has NOT been shown to user in several days, do
         # we check intervening days for PAID status on approved lates?  To do
         # so we must ignore any banktxn's that are already matched to a

@@ -229,11 +229,9 @@ X                                                             /users.stmt/trnbal
             hold.dateApplied = parseDateMDY(data)
 
     def data_regdmax(self, stack, tag, data):
-        # TODO - show this in the UI somewhere
         self.printDebug(data)
 
     def data_regdcnt(self, stack, tag, data):
-        # TODO - show this in the UI somewhere
         self.printDebug(data)
 
     def data_trntype(self, stack, tag, data):

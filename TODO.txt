@@ -2,6 +2,10 @@
 
 Minor:
     
+- check PAID status on intervening days if a transaction is being moved
+
+- show regulation d count/max in the UI somewhere
+
 - fix all places where recurrence should be checked and broken - test with
   recurring events
 
