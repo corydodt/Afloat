@@ -5,16 +5,6 @@ Minor:
 - scheduler table sometimes gets off by a few pixels and floats down to the
   next line
 
-- flag transactions as late even when they are new, as they come back.
-  Reproduce: 1. Use scheduler widget to add a new event, 2 weeks ago  2.
-  When page refreshes, I should immediately get the late transactions dialog.
-    Instead I get the normal page, with no hint of the late transaction.
-
-- match up transactions even when they are new, as they come back.
-  Reproduce: 1. Find a ledger transaction for today  2. Schedule a transaction
-    for it in the scheduler  3. When page refreshes, I should immediately see
-    it marked PAID On the bubble.  Instead it still shows 'pending'
-
 - Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
   when they come at the beginning of a line in the scheduler widget
 

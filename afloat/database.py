@@ -331,14 +331,14 @@ class AfloatReport(object):
 
             # look for scheduledtxn items that still have not occurred / are
             # late.  These should be bubbled forward according to rules.
-            d = self.bubbleForward(gvents)
+            d = self.bubbleForward()
 
             return d
 
         d.addCallback(gotGvents)
         return d
 
-    def bubbleForward(self, gvents):
+    def bubbleForward(self, ):
         """
         Move forward transactions which should have occurred already but didn't
 
@@ -603,7 +603,12 @@ class AfloatReport(object):
             txn = self.importScheduledTransaction(
                     self.config['defaultAccount'], event)
             log.msg("New event and calendar responded: OK, %s" % (event,))
-            return txn
+            log.msg("check for matchup %s" % (event,))
+            d = self.matchup()
+            log.msg("check for bubbling forward %s" % (event,))
+            d.addCallback(lambda _done: self.bubbleForward())
+            d.addCallback(lambda _done2: txn)
+            return d
 
         d.addCallback(gotEvent)
 
