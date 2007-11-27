@@ -11,10 +11,6 @@ Minor:
 - scheduler table sometimes gets off by a few pixels and floats down to the
   next line
 
-- way to correct errors in the database - i.e. when something gets marked PAID
-  but google calendar never saw it (does this still happen?
-    importScheduledTransaction does some of this now..)
-
 - fix caching of javascript and images from static.. max-age=0??
 
 - show future debits from savings / clean up defaultAccount stuff
