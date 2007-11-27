@@ -395,14 +395,6 @@ class AfloatReport(object):
 
         # TODO ...
 
-        # [Scheduler] on logging in, user is shown all late transactions (no
-        # matter how late).
-
-        # [Scheduler]  all approved transactions are edited so date = originalDate = today.
-
-        # [Scheduler] any transaction not approved is deleted from gvents and scheduledtxn
-        # table
-        
         # [matchup] if any candidate collides (rescheduled to a day with the same
         # amount, same keywords), and a transaction is matched on that date,
         # the candidate with the earliest originalDate is matched
@@ -651,21 +643,28 @@ class AfloatReport(object):
         for pending in pendings:
             matched = self.tryMatch(pending)
             if matched:
-                pending.paidDate = matched.ledgerDate
-                # overwrite the scheduled amount with the actual amount, when
-                # they differ (within the $0.05 tolerance)
-                pending.amount = matched.amount
-                pending.title = pending.title + '[PAID]'
-
                 log.msg('Found a matchup on "%s" == "%s"' % (
                         pending.title, matched.memo))
+                newTitle = pending.title + '[PAID]'
+                newAmount = matched.amount
+                newDate = matched.ledgerDate
                 d_ = protocol.putMatchedTransaction(pending.href,
-                        pending.paidDate, pending.amount, pending.title)
+                        newDate, newAmount, newTitle)
+
+                def gotMatchedTransaction(txn, pending):
+                    pending.paidDate = txn.paidDate 
+                    # overwrite the scheduled amount with the actual amount, when
+                    # they differ (within the $0.05 tolerance)
+                    pending.amount = txn.amount
+                    pending.title = txn.title
+                    self.store.commit()
+
+                d_.addCallback(gotMatchedTransaction, pending)
+
                 d_.addErrback(log.err)
                 dl.append(d_)
             else:
                 continue
-        self.store.commit()
 
         return defer.DeferredList(dl)
 
