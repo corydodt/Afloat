@@ -1,4 +1,5 @@
 # vi:ft=python
+assert 0, "Edit config.py"
 accountChecking = 'xxxxxxxx=8'
 accountSavings = 'xxxxxxxx=0'
 defaultAccount = accountChecking
