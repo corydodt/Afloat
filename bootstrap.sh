@@ -57,7 +57,9 @@ t="from twisted import __version__ as v; assert v>='2.5.0', 'Have %s' % (v,)"
 testPython "Twisted 2.5" "$t"
 testPython "Divmod Nevow" 'import nevow'
 testPython "Python 2.5" 'import xml.etree'
-testCommand "ofxconnect" "ofxconnect"
+testPython "Storm" 'from storm.locals import *'
+testPython "SQLite 3" 'import sqlite3'
+# testCommand "ofxconnect" "ofxconnect"
 
 if [ "$errorStatus" == "error" ]; then
     echo "** Errors occurred.  Please fix the above errors, then re-run this script."
