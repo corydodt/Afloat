@@ -11,14 +11,8 @@ EOF
 export errorStatus=""
 
 function testCommand()
-# Use: testPython "Software name" "python code"
-#  If "python code" has no output, we pass.
-# 
-#  If there is any output, the last line is considered an error message, and
-#  we print it.  Then we set the global errorStatus.
-# 
-#  "python code" should not write to stderr if possible, so use 2>&1 to
-#  redirect to stdout.
+# Use: testCommand "command"
+#  If "command" is found in our binary search PATH, we pass.
 {
     software="$1"
     line=$(which $software)
@@ -58,10 +52,10 @@ testPython "Twisted 2.5" "$t"
 testPython "Divmod Nevow" 'import nevow'
 testPython "Python 2.5" 'import xml.etree'
 testPython "Storm" 'from storm.locals import *'
-testPython "SQLite 3" 'import sqlite3'
+testCommand "sqlite3"
+testPython "SQLite 3 for Python" 'import sqlite3'
 testPython "Nevow" 'import nevow.athena'
 testPython "Google API" 'import gdata; import atom'
-# testCommand "ofxconnect" "ofxconnect"
 
 if [ "$errorStatus" == "error" ]; then
     echo "** Errors occurred.  Please fix the above errors, then re-run this script."
