@@ -59,6 +59,8 @@ testPython "Divmod Nevow" 'import nevow'
 testPython "Python 2.5" 'import xml.etree'
 testPython "Storm" 'from storm.locals import *'
 testPython "SQLite 3" 'import sqlite3'
+testPython "Nevow" 'import nevow.athena'
+testPython "Google API" 'import gdata; import atom'
 # testCommand "ofxconnect" "ofxconnect"
 
 if [ "$errorStatus" == "error" ]; then
