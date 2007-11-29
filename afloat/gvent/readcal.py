@@ -154,12 +154,6 @@ def formatEventString(event):
     return '\n'.join(ret)
 
 
-# functions for parsing the content of a calendar entry
-dollarRx = re.compile(r'^\$-?[0-9]+(\.[0-9]+)?$')
-noDollarRx = re.compile(r'^-?[0-9]+(\.[0-9]+)?$')
-checkRx = re.compile(r'#\d+\b')
-bracketRx = re.compile(r'\[.*?\]')
-
 def findAccounts(s):
     """
     Return the from,to accounts
@@ -169,6 +163,11 @@ def findAccounts(s):
             ret = [x.strip() for x in line.split('->')]
             return ret
     return [None, None]
+
+
+# functions for parsing the content of a calendar entry
+dollarRx = re.compile(r'^\$-?[0-9]+(\.[0-9]+)?$')
+noDollarRx = re.compile(r'^-?[0-9]+(\.[0-9]+)?$')
 
 def findAmount(s):
     """
@@ -184,6 +183,8 @@ def findAmount(s):
         if noDollarRx.match(word):
             return int(float(word)*100)
 
+checkRx = re.compile(r'#\d+\b')
+
 def findCheckNumber(s):
     """
     Return the check number if any
@@ -193,8 +194,12 @@ def findCheckNumber(s):
         if checkRx.match(word):
             return word
 
+bracketRx = re.compile(r'\[.*?\]')
 
 def cleanEventTitle(event):
+    """
+    Remove comments, in brackets
+    """
     return bracketRx.sub('', event.title.text)
     
 
