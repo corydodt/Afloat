@@ -177,7 +177,7 @@ class AfloatReport(object):
 
             # create regular transactions
             for account in p.banking.accounts.values():
-                self.updateAccount(account)
+                self.importAccount(account)
                 for txn in account.transactions.values():
                     self.importTransaction(account.id, txn)
 
@@ -474,9 +474,9 @@ class AfloatReport(object):
                 self.store.remove(sched)
         self.store.commit()
 
-    def updateAccount(self, account):
+    def importAccount(self, account):
         """
-        Make changes to an account in account table when it already exists
+        Do CRUD operations on accounts.
         """
         bankAcct = self.store.get(Account, account.id)
         if bankAcct is None:
@@ -488,8 +488,8 @@ class AfloatReport(object):
         bankAcct.ledgerAsOfDate = account.ledgerDate
         bankAcct.availableBalance = account.availBal
         bankAcct.availableAsOfDate = account.availDate
-        # bankAcct.regulationDCount =
-        # bankAcct.regulationDMax =
+        bankAcct.regulationDCount = account.regDCount
+        bankAcct.regulationDMax = account.regDMax
         self.store.commit()
 
     def balanceDays(self, account):

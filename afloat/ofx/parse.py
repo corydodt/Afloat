@@ -45,6 +45,8 @@ class Account(object):
     def __init__(self):
         self.transactions = {}
         self.holds = []
+        self.regDCount = None
+        self.regDMax = None
 
     def addTransaction(self, txn):
         self.transactions[txn.id] = txn
@@ -81,8 +83,8 @@ X                                                                               
 X                                                                         /hold/dtapplied (all by acctid, key)
 X                                                                              /desc  (all by acctid by dtapplied)
 X                                                                              /amt  (all by acctid by dtapplied)
-.                                                                         /regdcnt (all by accountid)
-.                                                                         /regdmax (all by accountid)
+X                                                                         /regdcnt (all by accountid)
+X                                                                         /regdmax (all by accountid)
 X          /bankmsgsrsv1/stmtrnsrs/stmtrs/bankacctfrom/acctid
 X                                        /banktranlist/stmttrn/fitid (all available, key)
 X                                                             /trntype
@@ -93,20 +95,6 @@ X                                                             /memo
 X                                                             /checknum
 X                                                             /users.stmt/trnbal
     """
-
-    ## def finish_starttag(self, tag, attrs):
-    ##     """
-    ##     In my subclass, replace "." with "_" in tagnames
-    ##     """
-    ##     tag = tag.replace('.', '_')
-    ##     return sgmllib.SGMLParser.finish_starttag(self, tag, attrs)
-
-    ## def finish_endtag(self, tag, ):
-    ##     """
-    ##     In my subclass, replace "." with "_" in tagnames
-    ##     """
-    ##     tag = tag.replace('.', '_')
-    ##     return sgmllib.SGMLParser.finish_endtag(self, tag, )
 
     def __init__(self, *a, **kw):
         sgmllib.SGMLParser.__init__(self, *a, **kw)
@@ -229,10 +217,10 @@ X                                                             /users.stmt/trnbal
             hold.dateApplied = parseDateMDY(data)
 
     def data_regdmax(self, stack, tag, data):
-        self.printDebug(data)
+        self.currentAccount.regDMax = int(data)
 
     def data_regdcnt(self, stack, tag, data):
-        self.printDebug(data)
+        self.currentAccount.regDCount = int(data)
 
     def data_trntype(self, stack, tag, data):
         txn = self.currentTransaction
