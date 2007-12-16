@@ -109,7 +109,7 @@ def pythonProcessRunner(after, *afterArgs, **afterKwargs):
 @pythonProcessRunner(lambda pp: pp.gvents)
 def getGvents(date1, date2):
     """
-    Utility function to retrieve gvents and return them as CalendarEventString
+    Utility fn to retrieve gvents and return them as CalendarEventString
     objects
     """
     pp = GVentProtocol()

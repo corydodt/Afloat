@@ -203,7 +203,7 @@ def cleanEventTitle(event):
     return bracketRx.sub('', event.title.text)
     
 
-def fixupEvent(client, event):
+def fixupEvent(client, event, date1, date2):
     """
     Parse numerics in event's title and set extended amount attribute on
     event.  Parse from/to fields from event description and get From/To for a
@@ -211,6 +211,8 @@ def fixupEvent(client, event):
     Do nothing if event already has these attributes.
     If anything changed, send the event back to Google.
     """
+    if date1 or date2:
+        assert date1 and date2, "Only 1 date was passed, need 2 dates or zero"
     changed = 0
     propsFound = dict([(x.name, x.value) for x in event.extended_property])
 
@@ -278,6 +280,8 @@ def fixupEvent(client, event):
 
     if changed:
         client.UpdateEvent(event.GetEditLink().href, event)
+
+    return event
 
 
 class CalendarEventString(object):
@@ -374,10 +378,14 @@ class GetEvents(usage.Options):
                             for x in e.extended_property])
                 continue
 
+            # use a list. later on, we might be replacing this with a list of
+            # the events that fixupEvents returns (when fixing up a recurring)
+            any = [e]
+
             # fixup events if dictated
             if self['fixup']:
                 try:
-                    fixupEvent(client, e)
+                    any = fixupEvent(client, e, d1, d2)
                 except NoAmountError:
                     # missing amount -> not a real event, don't even attempt
                     # to handle it
@@ -390,9 +398,10 @@ class GetEvents(usage.Options):
                     raise
 
             # print the event for other programs to parse
-            formatted = formatEventString(e)
-            if formatted:
-                print formatted
+            for finalEvent in any:
+                formatted = formatEventString(finalEvent)
+                if formatted:
+                    print formatted
 
     def getEvents(self, client, date1, date2):
         client.password = self['gventPassword']
@@ -441,7 +450,11 @@ class ScrubEvents(GetEvents):
 
 class AddEvent(usage.Options):
     """
-    Add a single event
+    Add a single event.  Return 'OK' when successful.
+    
+    (This does NOT print the new event, because it might require creating
+    recurrence exceptions, and we don't have any idea what the range of the
+    exceptions should be.)
     """
     optFlags = []
     def parseArgs(self, content ):
@@ -453,7 +466,8 @@ class AddEvent(usage.Options):
 
         # connect and pull all the events from google calendar
         client = CalendarService()
-        print self.addEvent(client)
+        _ = self.addEvent(client)
+        print 'OK'
 
     def addEvent(self, client):
         client.password = self['gventPassword']
@@ -463,10 +477,7 @@ class AddEvent(usage.Options):
 
         ev = quickAddEvent(client, self['gventCalendar'], self['content'])
 
-        # always use fixup on new events before formatting them
-        fixupEvent(client, ev)
-
-        return formatEventString(ev)
+        return fixupEvent(ev, ev.when[0].start_time, ev.when[0].end_time)
 
 
 class RemoveEvent(usage.Options):
@@ -529,9 +540,8 @@ class UpdateEvent(usage.Options):
 
         ev = getExactEvent(client, self['uri'])
 
-        assert len(ev.when == 1)
         # ev.when == 0 means this is a raw recurring event.  we don't alter
-        # these.
+        # these.  Instead 
         if len(ev.when) == 0:
             assert ev.original_event is None
             assert len(ev.recurrence.text) > 0

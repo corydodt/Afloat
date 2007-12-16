@@ -445,12 +445,13 @@ class Scheduler(athena.LiveElement):
     @athena.expose
     def schedule(self, value):
         """
-        Put a new item on the google calendar
+        Put a new item on the google calendar.  Then re-get all items from the
+        calendar.
         """
         if findAmount(value) is None:
             raise NoAmountError(value)
         d = self.report.quickAddItem(value)
-        d.addCallback(lambda txn: u"OK")
+        d.addCallback(self.report.update)
         return d
 
 

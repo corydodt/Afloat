@@ -602,15 +602,8 @@ class AfloatReport(object):
         d = protocol.quickAdd(content)
 
         def gotEvent(event):
-            txn = self.importScheduledTransaction(
-                    self.config['defaultAccount'], event)
-            log.msg("New event and calendar responded: OK, %s" % (event,))
-            log.msg("check for matchup %s" % (event,))
-            d = self.matchup()
-            log.msg("check for bubbling forward %s" % (event,))
-            d.addCallback(lambda _done: self.bubbleForward())
-            d.addCallback(lambda _done2: txn)
-            return d
+            log.msg("New event and calendar responded: OK")
+            return 'OK'
 
         d.addCallback(gotEvent)
 
