@@ -529,6 +529,14 @@ class UpdateEvent(usage.Options):
 
         ev = getExactEvent(client, self['uri'])
 
+        assert len(ev.when == 1)
+        # ev.when == 0 means this is a raw recurring event.  we don't alter
+        # these.
+        if len(ev.when) == 0:
+            assert ev.original_event is None
+            assert len(ev.recurrence.text) > 0
+            return None
+
         changed = 0
 
         if self['paidDate']:
