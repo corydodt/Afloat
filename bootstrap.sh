@@ -59,7 +59,6 @@ testPython "Divmod Nevow" 'import nevow'
 testPython "Python 2.5" 'import xml.etree'
 testPython "Storm" 'from storm.locals import *'
 testPython "SQLite 3" 'import sqlite3'
-# testCommand "ofxconnect" "ofxconnect"
 
 if [ "$errorStatus" == "error" ]; then
     echo "** Errors occurred.  Please fix the above errors, then re-run this script."
