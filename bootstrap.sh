@@ -42,7 +42,7 @@ function testPython()
 #  redirect to stdout.
 {
     software="$1"
-    line=$(python -c "$2" 2>&1 | tail -1)
+    line=$(python -Wignore -c "$2" 2>&1 | tail -1)
 
     if [ -n "$line" ]; then
         echo "** Install $software ($line)"
@@ -63,6 +63,11 @@ testPython "SQLite 3" 'import sqlite3'
 if [ "$errorStatus" == "error" ]; then
     echo "** Errors occurred.  Please fix the above errors, then re-run this script."
     exit 1
+fi
+
+if [ ! -e "afloat/afloat.db" ]; then
+    python afloat/database.py
+    echo "Wrote afloat/afloat.db"
 fi
 
 echo "Done."
