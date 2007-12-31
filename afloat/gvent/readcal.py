@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import re
 import datetime
 import md5
@@ -171,11 +171,6 @@ def formatEventString(event):
     get = lambda k: eProps.get(k)
     href = e.GetSelfLink().href
 
-    # skip over special events created when you break a recurring
-    # event  (??)
-    if e.original_event is not None:
-        return
-
     ret = []
     for when in e.when:
         ret.append(
@@ -258,43 +253,6 @@ def cleanEventTitle(event):
     Remove comments, in brackets
     """
     return bracketRx.sub('', event.title.text)
-
-def explodeEventList(client, calendarName, events, date1, date2):
-    """
-    Take a series of events, and explode the recurring events in it.
-
-    For any recurring events, make them into a series of exception events.
-    But don't clobber exception events that are already found in the list.
-    """
-    # the whole concept of what this does is probably wrong.. i think i just
-    # need to work on a singleevents feed instead.
-    ret = []
-    # build a dictionary mapping recurring events to the children which are
-    # found in the 'events' list.  each child is mapped against a date.
-    recurrers = {}
-    for e in events:
-        if e.original_event:
-            href = e.original_event.href
-            dates = recurrers.setdefault(href, {})
-            dates[parseDateYMD(e.when[0].start_time)] = e
-
-    for e in events:
-        if not e.recurrence:
-            ret.append(e)
-        else:
-            dates = recurrers[e.id.text]
-            # iterate all the days in the range, skipping days that already
-            # have an exception event on them
-            for day in dateRange(date1, date2):
-                if day in dates.keys():
-                    ret.append(dates[day])
-                else:
-                    when = calendar.When(start_time=formatDateYMD(day), 
-                            end_time=formatDateYMD(day + days(1)))
-                    new1 = cloneAsException(client, calendarName, e, when)
-                    ret.append(new1)
-
-    return ret
 
 
 def fixupEvent(client, event):
@@ -456,7 +414,23 @@ class GetEvents(usage.Options):
         'calendar items that do not have it'],
         ['show-unclean', None, 'Show events that have extended properties',],
     ]
-    def parseArgs(self, date1, date2):
+    def parseArgs(self, date1=None, date2=None):
+        # date1 and date2 may be missing, if environment variable is set
+        if not (date1 and date2):
+            dates = os.environ.get('READCAL_DATES')
+            if dates:
+                try:
+                    e_date1, e_date2 = dates.strip().split()
+                except ValueError:
+                    raise usage.UsageError("** READCAL_DATES was set incorrectly. "
+                            "Should be two dates, separated by a space")
+                if not date1:
+                    date1 = e_date1
+                if not date2:
+                    date2 = e_date2
+            else:
+                raise usage.UsageError("** Must specify dates or set "
+                        "READCAL_DATES in the environment")
         execfile(RESOURCE('../config.py'), self)
         self['dateStart'] = date1
         self['dateEnd'] = date2
@@ -471,15 +445,8 @@ class GetEvents(usage.Options):
         client = CalendarService()
         feed = self.getEvents(client, d1, d2)
 
-        # turn recurring events into event exceptions
-        if self['fixup']:
-            any = explodeEventList(client, self['gventCalendar'], feed.entry,
-                    d1, d2)
-        else:
-            any = [e for e in feed.entry]
-
         # process each event according to command-line options
-        for e in any:
+        for e in feed.entry:
             # show events that have any extended properties (these have had
             # fixup done on them at some point in the past)
             if self['show-unclean']:
@@ -494,7 +461,7 @@ class GetEvents(usage.Options):
             # fixup events if dictated
             if self['fixup']:
                 try:
-                    any = fixupEvent(client, e)
+                    e = fixupEvent(client, e)
                 except NoAmountError:
                     # missing amount -> not a real event, don't even attempt
                     # to handle it
@@ -511,7 +478,7 @@ class GetEvents(usage.Options):
         client.ProgrammaticLogin()
 
         return dateQuery(client, self['gventCalendar'], date1, date2, 
-                singleevents='true')
+                singleevents='true', orderby='starttime')
 
 
 class ScrubEvents(GetEvents):
