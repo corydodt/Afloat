@@ -37,15 +37,14 @@ What needs to happen:
 
     + fixupEvent just fixes up a single event, no special magic
 
-    - explodeEventList turns recurring events into a bunch of exceptions
-        - really?
-
     - updateEvent checks event
         - if regular event
             - make whatever change needed
         - if recurring event
             - make a new exception event on the indicated day
             - make whatever change is needed to that
+            - set originalEvent to an *instance* of recurring having the
+              *original* date
         - if exception to recurring
             - delete it 
             - create a new exception on the indicated day

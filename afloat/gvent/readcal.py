@@ -142,22 +142,22 @@ def copyEventForScrub(client, calendarName, event):
 
 def cloneAsException(client, calendarName, event, when):
     """
-    Create an exception event for recurring event 'event',
-    using 'when' as the times and creating an OriginalEvent.
+    Create an exception event for 'event', an INSTANCE of a recurring event,
+    using 'when' as the destination times and creating an OriginalEvent.
 
     This copies everything except when, recurrence and original_event.
 
-    If event is not a recurring event, just return it.
-
-    Otherwise, insert and then return the clone.
+    Insert and then return the clone.
     """
-    # this is probably wrong.. i just need to work from a singleevents feed
     assert event.recurrence is not None
     
     new1 = _copyEventCommon(event)
-    orig = calendar.OriginalEvent(id=event.id.text, when=when)
+    # OriginalEvent is supposed to refer to the when of the original event.
+    # that is, when the recurring event WOULD have occurred naturally.
+    orig = calendar.OriginalEvent(id=event.id.text, when=event.when)
     new1.original_event = orig
     new1.recurrence = None
+    # THIS when refers to the new time, now that we have rescheduled.
     new1.when = when
     ev = client.InsertEvent(new1,
         '/calendar/feeds/%s/private/full' % (calendarName,))
