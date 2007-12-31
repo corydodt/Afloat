@@ -1,6 +1,7 @@
-regular event: no recurrence, len(ev.when) == 1, ev.original_event = self(?)
-recurring event: recurrence is set, len(ev.when) == 0?, ev.original_event is None
-instance of a recurring event: recurrence is ?, len(ev.when) == 1?, ev.original_event = other
+regular event: recurrence is None	len(e.when) == 1	e.original_event = None
+recurring event: recurrence.text is set	len(e.when) may be > 1	e.original_event is None
+instance of a recurring event: recurrence is None   len(ev.when) == 1	ev.original_event = some recurring event
+exception to a recurring event: same as instance of a recurring event?
 
 
 Things that create events:
@@ -25,28 +26,19 @@ Things that delete events:
 
 What needs to happen:
     - delete*Event checks event
+        - assert not a recurring event!
         - if regular event
             - delete it
-        - if recurring event
-            - add a cancellation on that day
         - if instance of recurring
-            - set status=cancelled
+            - add a cancellation on that day (e.event_status.value =
+              'CANCELED')
 
     + AddEvent.addEvent print 'OK' now instead of an event string
 
-    + fixupEvent takes a date range now
+    + fixupEvent just fixes up a single event, no special magic
 
-    - fixupEvent checks event
-        - if regular event
-            - fix it
-        - if recurring event
-            - find all recurrences within reach of the date range
-            - create them as exceptions
-            - fix them
-        - if instance of recurring
-            - fix it (?)
-
-    - fixupEvent returns a list of events
+    - explodeEventList turns recurring events into a bunch of exceptions
+        - really?
 
     - updateEvent checks event
         - if regular event
@@ -54,14 +46,18 @@ What needs to happen:
         - if recurring event
             - make a new exception event on the indicated day
             - make whatever change is needed to that
-        - if instance of recurring
+        - if exception to recurring
             - delete it 
             - create a new exception on the indicated day
             - make the needed change to the new event
 
-    + GetEvents.postOptions changes
-        + pass date range to fixupEvents
-        + print all the events returned by fixupEvents.
+    - GetEvents.postOptions changes
+        - before fixupEvent call explodeEventList (hey, maybe call
+          singleevents request)
+        - print all the events returned by explodeEventList (?maybe want to
+          use a singleevents feed approach instead)
+        - any instance of a recurring may have exceptionRecurrence set,
+          check for that and print exception instead of original instance
 
     + resource.Scheduler.schedule should cause (and wait for) all events to be
       re-retrieved.
@@ -89,3 +85,8 @@ Tests:
 3. Retitle an instance of a recurring
 3a. See new title in schedule
 3b. Only that instance should be retitled in Google
+
+4. Change the date of an instance of a recurring to one day later
+4a. New date should be reflected in Google
+4b. After reloads, should see item 1 day later in schedule
+4c. Any properties on it (e.g. [PAID]) should be retained
