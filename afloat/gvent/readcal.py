@@ -64,12 +64,15 @@ def deleteExactEvent(client, uri):
 def getExactEvent(client, uri):
     return client.GetCalendarEventEntry(uri)
 
-def dateQuery(client, calendarName, start_date, end_date):
+def dateQuery(client, calendarName, start_date, end_date, **kwargs):
     """
     Retrieves events from the server which occur during the specified date
     range.
+
+    **kwargs may be specified to enhance the query
     """
     query = CalendarEventQuery(calendarName, 'private', 'full')
+    query.update(kwargs)
     query.start_min = start_date
     query.start_max = end_date
     return client.CalendarQuery(query)
@@ -95,7 +98,11 @@ def quickAddEvent(client, calendarName, content="Tennis with John today 3pm-3:30
         '/calendar/feeds/%s/private/full' % (calendarName,))
     return new_event
 
-def copyEvent(client, calendarName, event):
+def _copyEventCommon(event):
+    """
+    Create new event as a copy of 'event', only copying things that always
+    need to be copied
+    """
     new1 = calendar.CalendarEventEntry()
     new1.author = event.author
     new1.category = event.category
@@ -104,6 +111,7 @@ def copyEvent(client, calendarName, event):
     new1.contributor = event.contributor
     new1.control = event.control
     new1.event_status = event.event_status
+    new1.extended_property = event.extended_property
     new1.original_event = event.original_event
     new1.published = event.published
     new1.recurrence = event.recurrence
@@ -118,8 +126,42 @@ def copyEvent(client, calendarName, event):
     new1.when = event.when
     new1.where = event.where
     new1.who = event.who
+    return new1
+
+def copyEventForScrub(client, calendarName, event):
+    """
+    Copy an event to a duplicate event, keeping recurrence and original_event,
+    then insert it into the calendar.
+
+    This copies everything except extended_property.
+    """
+    new1 = _copyEventCommon(event)
+    new1.extended_property = None
     return client.InsertEvent(new1,
         '/calendar/feeds/%s/private/full' % (calendarName,))
+
+def cloneAsException(client, calendarName, event, when):
+    """
+    Create an exception event for recurring event 'event',
+    using 'when' as the times and creating an OriginalEvent.
+
+    This copies everything except when, recurrence and original_event.
+
+    If event is not a recurring event, just return it.
+
+    Otherwise, insert and then return the clone.
+    """
+    # this is probably wrong.. i just need to work from a singleevents feed
+    assert event.recurrence is not None
+    
+    new1 = _copyEventCommon(event)
+    orig = calendar.OriginalEvent(id=event.id.text, when=when)
+    new1.original_event = orig
+    new1.recurrence = None
+    new1.when = when
+    ev = client.InsertEvent(new1,
+        '/calendar/feeds/%s/private/full' % (calendarName,))
+    return ev
 
 def formatEventString(event):
     e = event
@@ -153,6 +195,21 @@ def formatEventString(event):
 
     return '\n'.join(ret)
 
+def dateRange(d1, d2):
+    """
+    Return a series of dates between two dates, including both ends
+    (this is an asymmetry with the builtin range() function for example)
+    """
+    assert d2 > d1, "End date must be later than start date"
+    start = parseDateYMD(d1)
+    end = parseDateYMD(d2)
+    ret = [start]
+    last = ret[-1]
+    while last < end:
+        last = last + days(1)
+        ret.append(last)
+
+    return ret
 
 def findAccounts(s):
     """
@@ -201,9 +258,46 @@ def cleanEventTitle(event):
     Remove comments, in brackets
     """
     return bracketRx.sub('', event.title.text)
-    
 
-def fixupEvent(client, event, date1, date2):
+def explodeEventList(client, calendarName, events, date1, date2):
+    """
+    Take a series of events, and explode the recurring events in it.
+
+    For any recurring events, make them into a series of exception events.
+    But don't clobber exception events that are already found in the list.
+    """
+    # the whole concept of what this does is probably wrong.. i think i just
+    # need to work on a singleevents feed instead.
+    ret = []
+    # build a dictionary mapping recurring events to the children which are
+    # found in the 'events' list.  each child is mapped against a date.
+    recurrers = {}
+    for e in events:
+        if e.original_event:
+            href = e.original_event.href
+            dates = recurrers.setdefault(href, {})
+            dates[parseDateYMD(e.when[0].start_time)] = e
+
+    for e in events:
+        if not e.recurrence:
+            ret.append(e)
+        else:
+            dates = recurrers[e.id.text]
+            # iterate all the days in the range, skipping days that already
+            # have an exception event on them
+            for day in dateRange(date1, date2):
+                if day in dates.keys():
+                    ret.append(dates[day])
+                else:
+                    when = calendar.When(start_time=formatDateYMD(day), 
+                            end_time=formatDateYMD(day + days(1)))
+                    new1 = cloneAsException(client, calendarName, e, when)
+                    ret.append(new1)
+
+    return ret
+
+
+def fixupEvent(client, event):
     """
     Parse numerics in event's title and set extended amount attribute on
     event.  Parse from/to fields from event description and get From/To for a
@@ -211,16 +305,20 @@ def fixupEvent(client, event, date1, date2):
     Do nothing if event already has these attributes.
     If anything changed, send the event back to Google.
     """
-    if date1 or date2:
-        assert date1 and date2, "Only 1 date was passed, need 2 dates or zero"
-    changed = 0
-    propsFound = dict([(x.name, x.value) for x in event.extended_property])
+    assert not event.recurrence, (
+            "Called fixupEvent on recurring: %s" % (event.title.text,))
 
+    changed = 0
+
+    propsFound = dict([(x.name, x.value) for x in event.extended_property])
     get = propsFound.get
+
 
     # remove [comments inside brackets] before processing the event
     titleText = cleanEventTitle(event)
 
+
+    # add amount properties by parsing the title
     amount = findAmount(titleText)
     if amount is None:
         raise NoAmountError(titleText)
@@ -231,6 +329,8 @@ def fixupEvent(client, event, date1, date2):
         propsFound[EVENT_AMOUNT] = prop.value
         changed = 1
 
+
+    # add check number properties by parsing the title
     cn = findCheckNumber(titleText)
     if get(EVENT_CHECKNUMBER) != cn or EVENT_CHECKNUMBER not in propsFound:
         if cn is not None:
@@ -244,6 +344,8 @@ def fixupEvent(client, event, date1, date2):
     ## But there is presently no way to simply remove an extended_property
     ## from a google event, so we can't handle this case
 
+
+    # add account properties by parsing the event.content.text
     if event.content.text:
         fromAccount, toAccount = findAccounts(event.content.text)
         if ( (get(EVENT_TOACCOUNT) != toAccount) or
@@ -267,17 +369,18 @@ def fixupEvent(client, event, date1, date2):
     ## But there is presently no way to simply remove an extended_property
     ## from a google event, so we can't handle this case
 
-    assert len(event.when) == 1
-    startTime = event.when[0].start_time
-    if get(EVENT_ORIGINALDATE) != startTime or EVENT_ORIGINALDATE not in propsFound:
-        # FIXME - just setting this HAS to break recurrence because
-        # there will be a separate ORIGINALDATE for each one
-        prop = calendar.ExtendedProperty(name=EVENT_ORIGINALDATE,
-                value=startTime)
+
+    # add original date property by looking at event.when
+    E_OD = EVENT_ORIGINALDATE
+    w = event.when[0]
+    if get(E_OD) != w.start_time or E_OD not in propsFound:
+        prop = calendar.ExtendedProperty(name=E_OD, value=w.start_time)
         event.extended_property.append(prop)
-        propsFound[EVENT_ORIGINALDATE] = prop.value
+        propsFound[E_OD] = prop.value
         changed = 1
 
+
+    # done. save to google.
     if changed:
         client.UpdateEvent(event.GetEditLink().href, event)
 
@@ -300,6 +403,9 @@ class CalendarEventString(object):
         else:
             self.checkNumber = None
         self.bankId = coalesce(bankId)
+
+        assert originalDate is not None
+
         self.originalDate = parseDateYMD(originalDate[:10])
         self.expectedDate = parseDateYMD(expectedDate[:10])
         self.amount = int(amount)
@@ -365,8 +471,15 @@ class GetEvents(usage.Options):
         client = CalendarService()
         feed = self.getEvents(client, d1, d2)
 
+        # turn recurring events into event exceptions
+        if self['fixup']:
+            any = explodeEventList(client, self['gventCalendar'], feed.entry,
+                    d1, d2)
+        else:
+            any = [e for e in feed.entry]
+
         # process each event according to command-line options
-        for e in feed.entry:
+        for e in any:
             # show events that have any extended properties (these have had
             # fixup done on them at some point in the past)
             if self['show-unclean']:
@@ -378,30 +491,18 @@ class GetEvents(usage.Options):
                             for x in e.extended_property])
                 continue
 
-            # use a list. later on, we might be replacing this with a list of
-            # the events that fixupEvents returns (when fixing up a recurring)
-            any = [e]
-
             # fixup events if dictated
             if self['fixup']:
                 try:
-                    any = fixupEvent(client, e, d1, d2)
+                    any = fixupEvent(client, e)
                 except NoAmountError:
                     # missing amount -> not a real event, don't even attempt
                     # to handle it
                     continue
-                except RequestError:
-                    # Instances of recurring events may have cruft and
-                    # gremlins. Ignore errors on them.  Raise on others.
-                    if e.original_event:
-                        continue
-                    raise
 
-            # print the event for other programs to parse
-            for finalEvent in any:
-                formatted = formatEventString(finalEvent)
-                if formatted:
-                    print formatted
+            formatted = formatEventString(e)
+            if formatted:
+                print formatted
 
     def getEvents(self, client, date1, date2):
         client.password = self['gventPassword']
@@ -409,7 +510,8 @@ class GetEvents(usage.Options):
         client.source = 'TheSoftWorld-Afloat-0.0'
         client.ProgrammaticLogin()
 
-        return dateQuery(client, self['gventCalendar'], date1, date2)
+        return dateQuery(client, self['gventCalendar'], date1, date2, 
+                singleevents='true')
 
 
 class ScrubEvents(GetEvents):
@@ -444,7 +546,7 @@ class ScrubEvents(GetEvents):
         """
         if event.original_event:
             return
-        new1 = copyEvent(client, self['gventCalendar'], event)
+        new1 = copyEventForScrub(client, self['gventCalendar'], event)
         deleteEvent(client, event)
 
 
@@ -477,7 +579,12 @@ class AddEvent(usage.Options):
 
         ev = quickAddEvent(client, self['gventCalendar'], self['content'])
 
-        return fixupEvent(ev, ev.when[0].start_time, ev.when[0].end_time)
+        # explode and then fixup events, just like GetEvents would do
+        eList = explodeEventList([ev])
+        ret = []
+        for e in eList:
+            ret.append(fixupEvent(client, e, ))
+        return ret
 
 
 class RemoveEvent(usage.Options):
