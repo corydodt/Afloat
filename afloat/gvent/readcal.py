@@ -560,11 +560,7 @@ class RemoveEvent(usage.Options):
 
         assert not ev.recurrence, "Cannot delete a recurring event"
 
-        # instances of recurring events are merely canceled, not deleted
-        if ev.original_event:
-            ev.event_status.value = "CANCELED"
-        else:
-            deleteExactEvent(client, ev.GetEditLink().href)
+        deleteExactEvent(client, ev.GetEditLink().href)
 
         return formatEventString(ev)
 

@@ -2,9 +2,6 @@
 
 Minor:
     
-- fix all places where recurrence should be checked and broken - test with
-  recurring events.
-
 - Txns scheduled within 1 day of the far edge of the bubble do not show up in
   the scheduler or on the graph (off-by-1?)
 
@@ -27,3 +24,18 @@ Minor:
   Instances of recurring events should have an extra HL to edit the original
 
 - speed up fixup step by doing all fixups in one request
+
+- events scheduled for yesterday are bubbled forward before marking things
+  PAID, then the thing doesn't get marked PAID because it's on the wrong day
+    - test: find any txn that occurred yesterday
+    - in google ui, schedule a transaction for it on the day it actually paid
+    - force update in afloat.  event SHOULD be scheduled to yesterday, marked
+      paid.  instead it is scheduled to today, not paid.
+
+- items scheduled with quick add are being added to today even if they are for
+  some other day of the week or day of the month
+    - test: if today is Tuesday, schedule "foo $-24 every wednesday"
+    - expected an event scheduled for tomorrow and a week from tomorrow in the
+      schedule
+    - actual: event is scheduled for tomorrow and a week from tomorrow, but
+      also one for today.
