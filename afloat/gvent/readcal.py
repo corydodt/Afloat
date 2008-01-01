@@ -8,7 +8,6 @@ from twisted.python import usage
 import atom
 from gdata.calendar.service import CalendarEventQuery, CalendarService
 from gdata import calendar
-from gdata.service import RequestError
 
 from afloat.util import RESOURCE, days
 
@@ -17,6 +16,8 @@ CALENDAR_NAMES = {
 }
 
 AFLOAT_NS = 'http://thesoftworld.com/2007/afloat#'
+
+AFLOAT_USERAGENT = 'TheSoftWorld-Afloat-0.0'
 
 def uu(key):
     """
@@ -416,7 +417,7 @@ class GetEvents(usage.Options):
     ]
     def parseArgs(self, date1=None, date2=None):
         # date1 and date2 may be missing, if environment variable is set
-        if not (date1 and date2):
+        if not all([date1, date2]):
             dates = os.environ.get('READCAL_DATES')
             if dates:
                 try:
@@ -442,7 +443,7 @@ class GetEvents(usage.Options):
         d2 = self['dateEnd']
 
         # connect and pull all the events from google calendar
-        client = CalendarService()
+        client = connectClient(**self)
         feed = self.getEvents(client, d1, d2)
 
         # process each event according to command-line options
@@ -472,11 +473,6 @@ class GetEvents(usage.Options):
                 print formatted
 
     def getEvents(self, client, date1, date2):
-        client.password = self['gventPassword']
-        client.email = self['gventEmail']
-        client.source = 'TheSoftWorld-Afloat-0.0'
-        client.ProgrammaticLogin()
-
         return dateQuery(client, self['gventCalendar'], date1, date2, 
                 singleevents='true', orderby='starttime')
 
@@ -498,7 +494,7 @@ class ScrubEvents(GetEvents):
         d2 = self['dateEnd']
 
         # connect and pull all the events from google calendar
-        client = CalendarService()
+        client = connectClient(**self)
         feed = self.getEvents(client, d1, d2)
 
         # process each event according to command-line options
@@ -534,24 +530,13 @@ class AddEvent(usage.Options):
         self.update(self.parent)
 
         # connect and pull all the events from google calendar
-        client = CalendarService()
+        client = connectClient(**self)
         _ = self.addEvent(client)
         print 'OK'
 
     def addEvent(self, client):
-        client.password = self['gventPassword']
-        client.email = self['gventEmail']
-        client.source = 'TheSoftWorld-Afloat-0.0'
-        client.ProgrammaticLogin()
-
         ev = quickAddEvent(client, self['gventCalendar'], self['content'])
-
-        # explode and then fixup events, just like GetEvents would do
-        eList = explodeEventList([ev])
-        ret = []
-        for e in eList:
-            ret.append(fixupEvent(client, e, ))
-        return ret
+        return ev
 
 
 class RemoveEvent(usage.Options):
@@ -567,20 +552,33 @@ class RemoveEvent(usage.Options):
         self.update(self.parent)
 
         # connect and pull all the events from google calendar
-        client = CalendarService()
+        client = connectClient(**self)
         print self.removeEvent(client)
 
     def removeEvent(self, client):
-        client.password = self['gventPassword']
-        client.email = self['gventEmail']
-        client.source = 'TheSoftWorld-Afloat-0.0'
-        client.ProgrammaticLogin()
-
         ev = getExactEvent(client, self['uri'])
 
-        deleteExactEvent(client, ev.GetEditLink().href)
+        assert not ev.recurrence, "Cannot delete a recurring event"
+
+        # instances of recurring events are merely canceled, not deleted
+        if ev.original_event:
+            ev.event_status.value = "CANCELED"
+        else:
+            deleteExactEvent(client, ev.GetEditLink().href)
 
         return formatEventString(ev)
+
+
+def connectClient(gventPassword, gventEmail, **kw):
+    """
+    Return a new client instance, already logged in
+    """
+    client = CalendarService()
+    client.password = gventPassword
+    client.email = gventEmail
+    client.source = AFLOAT_USERAGENT
+    client.ProgrammaticLogin()
+    return client
 
 
 class UpdateEvent(usage.Options):
@@ -603,23 +601,13 @@ class UpdateEvent(usage.Options):
         self.update(self.parent)
 
         # connect and pull all the events from google calendar
-        client = CalendarService()
+        client = connectClient(**self)
         print self.updateEvent(client)
 
     def updateEvent(self, client):
-        client.password = self['gventPassword']
-        client.email = self['gventEmail']
-        client.source = 'TheSoftWorld-Afloat-0.0'
-        client.ProgrammaticLogin()
-
         ev = getExactEvent(client, self['uri'])
 
-        # ev.when == 0 means this is a raw recurring event.  we don't alter
-        # these.  Instead 
-        if len(ev.when) == 0:
-            assert ev.original_event is None
-            assert len(ev.recurrence.text) > 0
-            return None
+        assert not ev.recurrence, "Cannot update a recurring event!"
 
         changed = 0
 
@@ -636,7 +624,6 @@ class UpdateEvent(usage.Options):
             changed = 1
 
         if self['expectedDate']:
-            # FIXME - break recurrence here
             start = parseDateYMD(self['expectedDate'])
             end = start + days(1)
             ev.when[0].start_time = self['expectedDate']

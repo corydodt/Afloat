@@ -163,7 +163,9 @@ Afloat.Scheduler.methods( // {{{
             return;
         }
 
-        var d = self.callRemote("schedule", val);
+        var d = self.callRemote("schedule", val).addCallback(function (_done) {
+            window.history.go(0);
+        });
 
         // install a spinner over the form
         var spinner = Afloat.newSpinner("Creating new item \"" + val + "\"");

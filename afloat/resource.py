@@ -451,7 +451,7 @@ class Scheduler(athena.LiveElement):
         if findAmount(value) is None:
             raise NoAmountError(value)
         d = self.report.quickAddItem(value)
-        d.addCallback(self.report.update)
+        d.addCallback(lambda _: self.report.update())
         return d
 
 

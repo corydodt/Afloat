@@ -596,16 +596,15 @@ class AfloatReport(object):
 
     def quickAddItem(self, content):
         """
-        Add a new scheduled item to the google calendar.  Add the returned
-        transaction to our database.
+        Add a new scheduled item to the google calendar.
         """
         d = protocol.quickAdd(content)
 
-        def gotEvent(event):
+        def gotResponse(event):
             log.msg("New event and calendar responded: OK")
             return 'OK'
 
-        d.addCallback(gotEvent)
+        d.addCallback(gotResponse)
 
         return d
 

@@ -2,20 +2,17 @@
 
 Minor:
     
-- check PAID status on intervening days if a transaction is being moved
-
 - fix all places where recurrence should be checked and broken - test with
   recurring events.
-    This should be relatively easy for marking things PAID.  
-    - get the recurring event as oldEvent
-    - create a new event, with originalEvent = oldEvent
-    - Make the originalEvent have a <when>start_time of the instance you're
-      altering
-    - Edit, then publish the new event containing originalEvent==oldEvent.
-    Q: How do I move (for bubbling/reschedule) or remove (for unscheduling)?
-     .. looks like i need to set status=canceled and filter out canceled
-        events when removing.  Reschedule should just be setting a new
-        startTime on the containing event.
+
+- Txns scheduled within 1 day of the far edge of the bubble do not show up in
+  the scheduler or on the graph (off-by-1?)
+
+- check PAID status on intervening days if a transaction is being moved
+
+- the lightbox appears *behind* flash plugin objects (workaround/hack:
+    make the flash object visibility: hidden until after lightbox?)
+
 - Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
   when they come at the beginning of a line in the scheduler widget
 
@@ -25,3 +22,8 @@ Minor:
 - fix caching of javascript and images from static.. max-age=0??
 
 - show future debits from savings / clean up defaultAccount stuff
+
+- Hyperlink from events to the google calendar entry, so you can edit them.
+  Instances of recurring events should have an extra HL to edit the original
+
+- speed up fixup step by doing all fixups in one request

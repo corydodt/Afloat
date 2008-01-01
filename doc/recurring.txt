@@ -25,38 +25,26 @@ Things that delete events:
 
 
 What needs to happen:
-    - delete*Event checks event
-        - assert not a recurring event!
-        - if regular event
-            - delete it
-        - if instance of recurring
-            - add a cancellation on that day (e.event_status.value =
+    + RemoveEvent.removeEvent checks event
+        + assert not a recurring event!
+        + if regular event
+            + delete it
+        + if instance of recurring
+            + add a cancellation on that day (e.event_status.value =
               'CANCELED')
 
-    + AddEvent.addEvent print 'OK' now instead of an event string
+    + AddEvent changes
+        + AddEvent.addEvent print 'OK' now instead of an event string
+        + addEvent should not attempt to load the event
 
     + fixupEvent just fixes up a single event, no special magic
 
-    - updateEvent checks event
-        - if regular event
-            - make whatever change needed
-        - if recurring event
-            - make a new exception event on the indicated day
-            - make whatever change is needed to that
-            - set originalEvent to an *instance* of recurring having the
-              *original* date
-        - if exception to recurring
-            - delete it 
-            - create a new exception on the indicated day
-            - make the needed change to the new event
+    + updateEvent checks event
+        + assert not a recurring event!
+        + nothing else appears to be required.
 
-    - GetEvents.postOptions changes
-        - before fixupEvent call explodeEventList (hey, maybe call
-          singleevents request)
-        - print all the events returned by explodeEventList (?maybe want to
-          use a singleevents feed approach instead)
-        - any instance of a recurring may have exceptionRecurrence set,
-          check for that and print exception instead of original instance
+    + GetEvents.postOptions changes
+        + use singleevents feed so we can modify instances, not recurrings
 
     + resource.Scheduler.schedule should cause (and wait for) all events to be
       re-retrieved.
@@ -70,22 +58,24 @@ What needs to happen:
           called)
 
 Tests:
-1. QuickAdd an event like "Shell Gas $25 every day"
-1a. Recurring event should be created
-1b. After scheduling, page reloads, should contain all the new instances of
-    the item
-1c. Google calendar should show the item.
++ 1. QuickAdd an event like "Shell Gas $25 every day"
++ 1a. Recurring event should be created
++ 1b. After scheduling, page reloads, should contain all the new instances of
+      the item
++ 1c. Google calendar should show the item.
 
-2. Delete a single instance of the recurring
-2a. Only that instance should go away on the schedule
-2b. Check Google calendar to see that only that instance went away on the
-    calendar
+- 2. Delete a single instance of the recurring
+- 2a. Only that instance should go away on the schedule
+- 2b. Check Google calendar to see that only that instance went away on the
+      calendar
 
-3. Retitle an instance of a recurring
-3a. See new title in schedule
-3b. Only that instance should be retitled in Google
+- 3. Retitle an instance of a recurring
+- 3a. See new title in schedule
+- 3b. Only that instance should be retitled in Google
 
-4. Change the date of an instance of a recurring to one day later
-4a. New date should be reflected in Google
-4b. After reloads, should see item 1 day later in schedule
-4c. Any properties on it (e.g. [PAID]) should be retained
+- 4. Change the date of an instance of a recurring to one day later
+- 4a. New date should be reflected in Google
+- 4b. After reloads, should see item 1 day later in schedule
+- 4c. Any properties on it (e.g. [PAID]) should be retained
+
+# vim:set si:

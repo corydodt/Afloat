@@ -132,7 +132,7 @@ def remove(href):
     return args
 
 
-@pythonProcessRunner(lambda pp: pp.gvents[0])
+@pythonProcessRunner(lambda pp: 'OK')
 def quickAdd(content):
     """
     Utility fn to schedule a new event with the quick add interface
