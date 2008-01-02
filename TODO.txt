@@ -2,9 +2,6 @@
 
 Minor:
     
-- Txns scheduled within 1 day of the far edge of the bubble do not show up in
-  the scheduler or on the graph (off-by-1?)
-
 - check PAID status on intervening days if a transaction is being moved
 
 - the lightbox appears *behind* flash plugin objects (workaround/hack:

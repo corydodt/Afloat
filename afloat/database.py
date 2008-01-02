@@ -321,8 +321,10 @@ class AfloatReport(object):
         """
         account = kw['account']
 
-        date1 = datetime.datetime.today() - days(7)
-        date2 = date1 + days(self.config['lookAheadDays'] + 1)
+        today = datetime.datetime.today() 
+        date1 = today - days(7)
+        # +1 for today and +1 because the upper end is exclusive
+        date2 = today + days(self.config['lookAheadDays'])
 
         d = protocol.getGvents(date1, date2)
 
