@@ -1,6 +1,14 @@
 1. Burn rate computation and graph
 
 Minor:
+
+- items scheduled with quick add are being added to today even if they are for
+  some other day of the week or day of the month
+    - test: if today is Tuesday, schedule "foo $-24 every wednesday"
+    - expected an event scheduled for tomorrow and a week from tomorrow in the
+      schedule
+    - actual: event is scheduled for tomorrow and a week from tomorrow, but
+      also one for today.
     
 - check PAID status on intervening days if a transaction is being moved
 
@@ -10,12 +18,7 @@ Minor:
 - Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
   when they come at the beginning of a line in the scheduler widget
 
-- scheduler table sometimes gets off by a few pixels and floats down to the
-  next line
-
 - fix caching of javascript and images from static.. max-age=0??
-
-- show future debits from savings / clean up defaultAccount stuff
 
 - Hyperlink from events to the google calendar entry, so you can edit them.
   Instances of recurring events should have an extra HL to edit the original
@@ -29,10 +32,7 @@ Minor:
     - force update in afloat.  event SHOULD be scheduled to yesterday, marked
       paid.  instead it is scheduled to today, not paid.
 
-- items scheduled with quick add are being added to today even if they are for
-  some other day of the week or day of the month
-    - test: if today is Tuesday, schedule "foo $-24 every wednesday"
-    - expected an event scheduled for tomorrow and a week from tomorrow in the
-      schedule
-    - actual: event is scheduled for tomorrow and a week from tomorrow, but
-      also one for today.
+- scheduler table sometimes gets off by a few pixels and floats down to the
+  next line
+
+- show future debits from savings / clean up defaultAccount stuff
