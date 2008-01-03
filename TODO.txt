@@ -10,6 +10,16 @@ Minor:
     - actual: event is scheduled for tomorrow and a week from tomorrow, but
       also one for today.
     
+- When the bank request fails, transactions are bubbled forward automatically
+  anyway.  This means sometimes transactions are moved away from the date when
+  they were actually paid.
+    - test: a) schedule a txn that occurred today, on today  b) tamper with
+      /etc/hosts so that the bank ofx request fails
+    - actual: the txn that occurred today is moved to tomorrow.  Now it can no
+      longer be reconciled automatically, even though it did occur.
+    - expected: ?? maybe set a global (fs?) lock on the matchup process when ofx
+      begins.  don't remove the lock until ofx succeeds.
+
 - check PAID status on intervening days if a transaction is being moved
 
 - the lightbox appears *behind* flash plugin objects (workaround/hack:
@@ -36,3 +46,4 @@ Minor:
   next line
 
 - show future debits from savings / clean up defaultAccount stuff
+
