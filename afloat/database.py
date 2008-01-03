@@ -143,11 +143,19 @@ class AfloatReport(object):
         _gventDeferred = self._ofxDeferred.addCallback(
                 lambda _: self.getGvents(account=c['defaultAccount'],))
 
-        _gventDeferred.addCallback(logSuccess, u'gvent')
-        _gventDeferred.addErrback(logFailure, u'gvent')
-        _gventDeferred.addErrback(log.err)
+        # look for events we can reconcile. we now do this both before and
+        # after bubbleForward so we can catch anything we missed yesterday
+        _gventDeferred.addCallback(lambda _: self.matchup())
+
+        # look for scheduledtxn items that still have not occurred / are
+        # late.  These should be bubbled forward according to rules.
+        # we now do this both before and after 
+        _gventDeferred.addCallback(lambda _: self.bubbleForward())
 
         _gventDeferred.addCallback(lambda _: self.matchup())
+
+        _gventDeferred.addCallback(logSuccess, u'gvent')
+        _gventDeferred.addErrback(logFailure, u'gvent')
         _gventDeferred.addErrback(log.err)
 
         return _gventDeferred
@@ -335,12 +343,6 @@ class AfloatReport(object):
             # Look for scheduledtxn items that have disappeared from the
             # google feed; these should be removed from scheduledtxn
             self.purgeRemovals(gvents, date1, date2)
-
-            # look for scheduledtxn items that still have not occurred / are
-            # late.  These should be bubbled forward according to rules.
-            d = self.bubbleForward()
-
-            return d
 
         d.addCallback(gotGvents)
         return d
