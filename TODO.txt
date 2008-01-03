@@ -14,7 +14,8 @@ Minor:
   anyway.  This means sometimes transactions are moved away from the date when
   they were actually paid.
     - test: a) schedule a txn that occurred today, on today  b) tamper with
-      /etc/hosts so that the bank ofx request fails
+      /etc/hosts so that the bank ofx request fails  c) start server and do
+      matchup
     - actual: the txn that occurred today is moved to tomorrow.  Now it can no
       longer be reconciled automatically, even though it did occur.
     - expected: ?? maybe set a global (fs?) lock on the matchup process when ofx
