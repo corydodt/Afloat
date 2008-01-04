@@ -21,13 +21,13 @@ Minor:
     - expected: ?? maybe set a global (fs?) lock on the matchup process when ofx
       begins.  don't remove the lock until ofx succeeds.
 
-- check PAID status on intervening days if a transaction is being moved
-
 - the lightbox appears *behind* flash plugin objects (workaround/hack:
     make the flash object visibility: hidden until after lightbox?)
 
 - Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
   when they come at the beginning of a line in the scheduler widget
+
+- check PAID status on intervening days if a transaction is being moved
 
 - fix caching of javascript and images from static.. max-age=0??
 
@@ -35,13 +35,6 @@ Minor:
   Instances of recurring events should have an extra HL to edit the original
 
 - speed up fixup step by doing all fixups in one request
-
-- events scheduled for yesterday are bubbled forward before marking things
-  PAID, then the thing doesn't get marked PAID because it's on the wrong day
-    - test: find any txn that occurred yesterday
-    - in google ui, schedule a transaction for it on the day it actually paid
-    - force update in afloat.  event SHOULD be scheduled to yesterday, marked
-      paid.  instead it is scheduled to today, not paid.
 
 - scheduler table sometimes gets off by a few pixels and floats down to the
   next line
