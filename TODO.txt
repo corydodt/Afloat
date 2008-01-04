@@ -11,15 +11,7 @@ Major
 Minor
 =====
 
-1  items scheduled with quick add are being added to today even if they are for
-   some other day of the week or day of the month
-    - test: if today is Tuesday, schedule "foo $-24 every wednesday"
-    - expected an event scheduled for tomorrow and a week from tomorrow in the
-      schedule
-    - actual: event is scheduled for tomorrow and a week from tomorrow, but
-      also one for today.
-    
-2  When the bank request fails, transactions are bubbled forward automatically
+1  When the bank request fails, transactions are bubbled forward automatically
    anyway.  This means sometimes transactions are moved away from the date when
    they were actually paid.
     - test: a) schedule a txn that occurred today, on today  b) tamper with
@@ -30,7 +22,7 @@ Minor
     - expected: ?? maybe set a global (fs?) lock on the matchup process when ofx
       begins.  don't remove the lock until ofx succeeds.
 
-3  the lightbox appears *behind* flash plugin objects (workaround/hack:
+2  the lightbox appears *behind* flash plugin objects (workaround/hack:
    make the flash object visibility: hidden until after lightbox?)
     - test: a) schedule a random txn to happen 4? days ago using the Google UI
       b) force an update so the lightbox appears
@@ -39,24 +31,24 @@ Minor
     - expected: the lightbox's content is clearly visible without artifacts.
       The flash chart need not be visible.
 
-4  Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
+3  Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
    when they come at the beginning of a line in the scheduler widget
     - test: a) schedule an event as $-99 foo bar using the scheduler. an
       update will happen automatically.
     - actual: The event should show as a debit of $-99 in the schedule box
     - expected: The event shows as a deposit of $99
 
-5  check PAID status on intervening days if a transaction is being moved
+4  check PAID status on intervening days if a transaction is being moved
 
-6  show future debits from savings / clean up defaultAccount stuff
+5  show future debits from savings / clean up defaultAccount stuff
 
-7  fix caching of javascript and images from static.. max-age=0??
+6  fix caching of javascript and images from static.. max-age=0??
 
-8  Hyperlink from events to the google calendar entry, so you can edit them.
+7  Hyperlink from events to the google calendar entry, so you can edit them.
    Instances of recurring events should have an extra HL to edit the original
 
-9  speed up fixup step by doing all fixups in one request
+8  speed up fixup step by doing all fixups in one request
 
-10 scheduler table sometimes gets off by a few pixels and floats down to the
+9  scheduler table sometimes gets off by a few pixels and floats down to the
    next line
 
