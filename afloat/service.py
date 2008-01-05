@@ -67,13 +67,13 @@ class AfloatService(internet.TCPServer):
         if not (4 <= ahead <= 30):
             c['lookAheadDays'] = min([30, max([4, ahead])])
             log.msg("** WARNING: lookAheadDays must be between 4 and 30."
-                "Adjusted to %s" % (c['lookAheadDays'],))
+                " Adjusted to %s" % (c['lookAheadDays'],))
 
         behind = int(c['lookBehindDays'])
         if not (4 <= behind <= 30):
             c['lookBehindDays'] = min([30, max([4, behind])])
             log.msg("** WARNING: lookBehindDays must be between 4 and 30."
-                "Adjusted to %s" % (c['lookBehindDays'],))
+                " Adjusted to %s" % (c['lookBehindDays'],))
 
     def periodicallyDownload(self, ):
         """
