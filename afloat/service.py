@@ -37,9 +37,7 @@ class AfloatService(internet.TCPServer):
         from afloat import database
         self.store = database.initializeStore()
 
-        # load config from config.py
-        self.config = {}
-        execfile(RESOURCE('../config.py'), self.config)
+        self.readConfig()
 
         self.report = database.AfloatReport(self.store, self.config)
 
@@ -57,6 +55,25 @@ class AfloatService(internet.TCPServer):
         self.periodicallyDownload()
 
         internet.TCPServer.startService(self, *a, **kw)
+
+    def readConfig(self):
+        """
+        Load config from config.py and do any massaging necessary.
+        """
+        c = self.config = {}
+        execfile(RESOURCE('../config.py'), self.config)
+
+        ahead = int(c['lookAheadDays'])
+        if ahead < 4 or ahead > 30:
+            c['lookAheadDays'] = min([30, max([4, ahead])])
+            log.msg("** WARNING: lookAheadDays must be between 4 and 30."
+                "Adjusted to %s" % (c['lookAheadDays'],))
+
+        behind = int(c['lookBehindDays'])
+        if behind < 4 or behind > 30:
+            c['lookBehindDays'] = min([30, max([4, behind])])
+            log.msg("** WARNING: lookBehindDays must be between 4 and 30."
+                "Adjusted to %s" % (c['lookBehindDays'],))
 
     def periodicallyDownload(self, ):
         """

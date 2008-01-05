@@ -14,16 +14,17 @@ Minor
 1  When the bank request fails, transactions are bubbled forward automatically
    anyway.  This means sometimes transactions are moved away from the date when
    they were actually paid.
-    - test: a) schedule a txn that occurred today, on today  b) tamper with
-      /etc/hosts so that the bank ofx request fails  c) start server and do
-      matchup
+    - test: a) schedule a txn that occurred yesterday, on yesterday (possibly
+      delete that record from the database)  b) tamper with /etc/hosts so that
+      the bank ofx request fails  c) start server and do matchup
     - actual: the txn that occurred today is moved to tomorrow.  Now it can no
       longer be reconciled automatically, even though it did occur.
     - expected: ?? maybe set a global (fs?) lock on the matchup process when ofx
       begins.  don't remove the lock until ofx succeeds.
+    - make a new database table for the lock? lockid|accountid|operation
 
-2  the lightbox appears *behind* flash plugin objects (workaround/hack:
-   make the flash object visibility: hidden until after lightbox?)
+2  the lightbox appears *behind* flash plugin objects (workaround/hack: make
+   the flash object visibility: hidden until after lightbox?)
     - test: a) schedule a random txn to happen 4? days ago using the Google UI
       b) force an update so the lightbox appears
     - actual: the lightbox content appears partially behind the flash object,
