@@ -151,7 +151,7 @@ def quickAdd(content):
 
 
 @pythonProcessRunner(GVentProtocol, lambda pp: pp.gvents[0])
-def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
+def putMatchedTransaction(uri, paidDate, expectedDate, newAmount, newTitle):
     """
     Utility fn to send a transaction back to google with post-matchup fixes,
     and return a CalendarEventString with the changes
@@ -159,6 +159,7 @@ def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
     args = ['python', '-m', 'afloat.gvent.readcal',
          'update-event', 
          '--paidDate=%s' % (formatDateYMD(paidDate),),
+         '--expectedDate=%s' % (formatDateYMD(expectedDate),),
          '--amount=%s' % (newAmount,), 
          '--title=%s' % (str(newTitle),),
          str(uri), 

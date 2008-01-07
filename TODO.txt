@@ -11,14 +11,6 @@ Major
 Minor
 =====
 
-1  check PAID status on intervening days if a transaction is being moved
-    - test: a) schedule a txn for 2 days ago that occurred yesterday  b)
-      do an update so the txn is matched or bubbled forward
-    - actual: (assumed) txn is not reconciled against yesterday's txn, instead
-      it is just moved to today.
-    - expected: txn is reconciled.  It is moved to yesterday's date in
-      scheduledtxn and in Google calendar.
-
 2  the lightbox appears *behind* flash plugin objects (workaround/hack: make
    the flash object visibility: hidden until after lightbox?)
     - test: a) schedule a random txn to happen 4? days ago using the Google UI

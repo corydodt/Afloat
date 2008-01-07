@@ -675,10 +675,11 @@ class AfloatReport(object):
                 newAmount = matched.amount
                 newDate = matched.ledgerDate
                 d_ = protocol.putMatchedTransaction(pending.href,
-                        newDate, newAmount, newTitle)
+                        newDate, newDate, newAmount, newTitle)
 
                 def gotMatchedTransaction(txn, pending):
                     pending.paidDate = txn.paidDate 
+                    pending.expectedDate = txn.expectedDate
                     # overwrite the scheduled amount with the actual amount, when
                     # they differ (within the $0.05 tolerance)
                     pending.amount = txn.amount
@@ -701,17 +702,31 @@ class AfloatReport(object):
         mydate = schedtxn.expectedDate
         myamount = schedtxn.amount
 
-        todayTxns = self.store.find(BankTransaction, 
-                BankTransaction.ledgerDate == mydate)
+        BT = BankTransaction
 
-        # look at check numbers first to shortcut
+        # look at check numbers first to shortcut.
+        # Assumption: check numbers can occur only once in the ledger
         if schedtxn.checkNumber:
-            for txn in todayTxns:
-                if txn.checkNumber == schedtxn.checkNumber:
-                    return txn
+            t = self.store.find(BT, BT.checkNumber == schedtxn.checkNumber).one()
+            # To prevent user-entry error, either the day or the amount must
+            # match exactly.
+            if t:
+                if mydate == t.ledgerDate or myamount == t.amount:
+                    return t
+
             return None
 
-        for txn in todayTxns:
+        today = datetime.datetime.now()
+
+        dateRange = [BT.ledgerDate >= schedtxn.originalDate, 
+                BT.ledgerDate <= today]
+        amountRange = [BT.amount >= schedtxn.amount - 5,
+                BT.amount <= schedtxn.amount + 5]
+
+        candidates = self.store.find(BT, 
+                locals.And(*([] + dateRange + amountRange)))
+
+        for txn in candidates:
             ST = ScheduledTransaction
 
             # skip any transaction that already has a corresponding paid
@@ -719,12 +734,8 @@ class AfloatReport(object):
             if self.store.find(ST, ST.bankId == txn.id).count() > 0:
                 continue
 
-            # skip any that don't match within $0.05
-            if abs(txn.amount - schedtxn.amount) > 5:
-                continue
-
-            # split into words and remove money amounts, then look at the memo. we
-            # should match all words.
+            # split into words and remove money amounts, then look at the
+            # memo. we should match all words.
             txnWords = parseKeywords(txn.memo)
             myWords = parseKeywords(txn.memo)
             matchCount = 0
