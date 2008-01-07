@@ -44,7 +44,6 @@ class GVentProtocol(ProcessProtocol):
         self.stream = self.stream + data
         if self.TERM in self.stream:
             self.loadEventFromStream()
-            g = self.gvents[-1]
 
     def errReceived(self, data):
         self.errors = self.errors + data
@@ -67,7 +66,15 @@ class GVentProtocol(ProcessProtocol):
         return d
 
 
-def pythonProcessRunner(after, *afterArgs, **afterKwargs):
+class GVentProtocolSimple(GVentProtocol):
+    """
+    A version of GVentProtocol which does not try to parse gvents
+    """
+    def outReceived(self, data):
+        self.stream = self.stream + data
+
+
+def pythonProcessRunner(proto, after, *afterArgs, **afterKwargs):
     """
     Decorate a function that returns command line arguments with another
     function that actually runs python, with spawnProcess, using those command
@@ -84,7 +91,7 @@ def pythonProcessRunner(after, *afterArgs, **afterKwargs):
         def decorated(*fna, **fnkw):
             processArgs = fn(*fna, **fnkw)
             print '** In pythonProcessRunner: .. ', ' '.join(processArgs)
-            pp = GVentProtocol()
+            pp = proto()
             pTransport = reactor.spawnProcess(pp, '/usr/bin/python', processArgs,
                     env=os.environ, usePTY=0)
             print '** spawned process'
@@ -106,7 +113,7 @@ def pythonProcessRunner(after, *afterArgs, **afterKwargs):
     return runner
 
 
-@pythonProcessRunner(lambda pp: pp.gvents)
+@pythonProcessRunner(GVentProtocol, lambda pp: pp.gvents)
 def getGvents(date1, date2):
     """
     Utility fn to retrieve gvents and return them as CalendarEventString
@@ -122,7 +129,7 @@ def getGvents(date1, date2):
     return args
 
 
-@pythonProcessRunner(lambda pp: pp.gvents[0])
+@pythonProcessRunner(GVentProtocol, lambda pp: pp.gvents[0])
 def remove(href):
     """
     Utility fn to un-schedule an event
@@ -132,7 +139,7 @@ def remove(href):
     return args
 
 
-@pythonProcessRunner(lambda pp: 'OK')
+@pythonProcessRunner(GVentProtocolSimple, lambda pp: 'OK')
 def quickAdd(content):
     """
     Utility fn to schedule a new event with the quick add interface
@@ -143,7 +150,7 @@ def quickAdd(content):
     return args
 
 
-@pythonProcessRunner(lambda pp: pp.gvents[0])
+@pythonProcessRunner(GVentProtocol, lambda pp: pp.gvents[0])
 def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
     """
     Utility fn to send a transaction back to google with post-matchup fixes,
@@ -159,7 +166,7 @@ def putMatchedTransaction(uri, paidDate, newAmount, newTitle):
     return args
 
 
-@pythonProcessRunner(lambda pp: pp.gvents[0])
+@pythonProcessRunner(GVentProtocol, lambda pp: pp.gvents[0])
 def changeDate(uri, newDate, original=True):
     """
     Change the date on a scheduled transaction.  When original=True, change
