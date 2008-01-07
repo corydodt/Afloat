@@ -14,6 +14,14 @@ from afloat.util import RESOURCE, days
 from afloat.gvent.readcal import parseKeywords
 from afloat.gvent import protocol
 
+
+class CannotBubble(Exception):
+    """
+    A bubble-forward event failed because no successful OFX load has taken
+    place.
+    """
+
+
 class BankTransaction(object):
     __storm_table__ = 'banktxn'
     id = locals.Unicode(primary=True)
@@ -64,6 +72,9 @@ class ScheduledTransaction(object):
 
 
 class NetworkLog(object):
+    """
+    A log of network events to OFX and Google Calendar
+    """
     __storm_table__ = 'networklog'
     id = locals.Int(primary=True)
     eventDateTime = locals.DateTime()
@@ -74,7 +85,7 @@ class NetworkLog(object):
     @classmethod
     def log(cls, store, service, severity, description):
         now = datetime.datetime.today()
-        nl = NetworkLog()
+        nl = cls()
         nl.eventDateTime = now
         assert service in ('gvent', 'ofx')
         nl.service = service
@@ -151,8 +162,6 @@ class AfloatReport(object):
         # late.  These should be bubbled forward according to rules.
         # we now do this both before and after 
         _gventDeferred.addCallback(lambda _: self.bubbleForward())
-
-        _gventDeferred.addCallback(lambda _: self.matchup())
 
         _gventDeferred.addCallback(logSuccess, u'gvent')
         _gventDeferred.addErrback(logFailure, u'gvent')
@@ -353,6 +362,20 @@ class AfloatReport(object):
 
         First move gvents, then move database transactions.
         """
+        # first check that there has recently been a successful OFX transfer.
+        # If the most recent OFX transfer failed (or is missing), we don't
+        # want to pretend that we know what happened to scheduled txns on the
+        # days we haven't seen yet.
+        rs = self.store.find(NetworkLog, NetworkLog.service == u'ofx'
+                ).order_by(locals.Desc(NetworkLog.eventDateTime))
+        if not rs:
+            raise CannotBubble()
+        else:
+            last = rs.first()
+            if not last.severity == u'OK':
+                raise CannotBubble()
+
+ 
         log.msg("BUBBLING FORWARD TRANSACTIONS")
 
         bubblers = []
@@ -702,9 +725,9 @@ class AfloatReport(object):
 
             # split into words and remove money amounts, then look at the memo. we
             # should match all words.
-            txnWords = txn.memo.split()
-            matchCount = 0
+            txnWords = parseKeywords(txn.memo)
             myWords = parseKeywords(txn.memo)
+            matchCount = 0
             for kw in myWords:
                 if kw in txnWords:
                     matchCount += 1

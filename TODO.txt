@@ -11,17 +11,13 @@ Major
 Minor
 =====
 
-1  When the bank request fails, transactions are bubbled forward automatically
-   anyway.  This means sometimes transactions are moved away from the date when
-   they were actually paid.
-    - test: a) schedule a txn that occurred yesterday, on yesterday (possibly
-      delete that record from the database)  b) tamper with /etc/hosts so that
-      the bank ofx request fails  c) start server and do matchup
-    - actual: the txn that occurred today is moved to tomorrow.  Now it can no
-      longer be reconciled automatically, even though it did occur.
-    - expected: ?? maybe set a global (fs?) lock on the matchup process when ofx
-      begins.  don't remove the lock until ofx succeeds.
-    - make a new database table for the lock? lockid|accountid|operation
+1  check PAID status on intervening days if a transaction is being moved
+    - test: a) schedule a txn for 2 days ago that occurred yesterday  b)
+      do an update so the txn is matched or bubbled forward
+    - actual: (assumed) txn is not reconciled against yesterday's txn, instead
+      it is just moved to today.
+    - expected: txn is reconciled.  It is moved to yesterday's date in
+      scheduledtxn and in Google calendar.
 
 2  the lightbox appears *behind* flash plugin objects (workaround/hack: make
    the flash object visibility: hidden until after lightbox?)
@@ -39,17 +35,16 @@ Minor
     - actual: The event should show as a debit of $-99 in the schedule box
     - expected: The event shows as a deposit of $99
 
-4  check PAID status on intervening days if a transaction is being moved
+4  show future debits from savings / clean up defaultAccount stuff
 
-5  show future debits from savings / clean up defaultAccount stuff
+5  fix caching of javascript and images from static.. max-age=0??
 
-6  fix caching of javascript and images from static.. max-age=0??
-
-7  Hyperlink from events to the google calendar entry, so you can edit them.
+6  Hyperlink from events to the google calendar entry, so you can edit them.
    Instances of recurring events should have an extra HL to edit the original
 
-8  speed up fixup step by doing all fixups in one request
+7  speed up fixup step by doing all fixups in one request
+
+8  Do not show the None hold in the UI when hovering
 
 9  scheduler table sometimes gets off by a few pixels and floats down to the
    next line
-

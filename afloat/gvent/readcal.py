@@ -656,11 +656,14 @@ def parseDateYMD(s):
         return None
     return datetime.datetime.strptime(s, '%Y-%m-%d')
 
+alnumRx = re.compile('[_\W\s]+', flags=re.U)
 
 def parseKeywords(s):
     """
     Split into keywords, removing check numbers and money amounts
     """
+    # remove puncutation characters
+    s = alnumRx.sub(' ', s)
     words = s.split()
     retWords = dict(enumerate(words))
 
