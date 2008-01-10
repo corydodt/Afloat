@@ -736,8 +736,8 @@ class AfloatReport(object):
 
             # split into words and remove money amounts, then look at the
             # memo. we should match all words.
-            txnWords = parseKeywords(txn.memo)
-            myWords = parseKeywords(schedtxn.title)
+            txnWords = [w.lower() for w in parseKeywords(txn.memo)]
+            myWords = [w.lower() for w in parseKeywords(schedtxn.title)]
             matchCount = 0
             for kw in myWords:
                 if kw in txnWords:
