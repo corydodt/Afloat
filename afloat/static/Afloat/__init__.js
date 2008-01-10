@@ -21,6 +21,21 @@ Afloat.modalFromNode = function (node) { // {{{
     // copy the content of node into a modal dialog (lightbox)
     var config = new LightboxConfig();
     config.contents = node.innerHTML;
+
+    // kludge .. hide all embedded stuff when showing the modal
+    var embeds = document.documentElement.select('embed');
+    $A(embeds).each(function (e) { 
+        e.setAttribute('_oldVisibility', e.style['visibility']);
+        e.style['visibility'] = 'hidden'; 
+    });
+    
+    // restore embedded stuff when closing the modal
+    config.afterClose = function () { $A(embeds).each(function(e) {
+        e.style['visibility'] = e.readAttribute('_oldVisibility');
+        e.removeAttribute('_oldVisibility');
+        }
+    )};
+
     var modal = new Control.Modal(null, config);
     modal.open();
     return modal;
@@ -83,7 +98,7 @@ Afloat.Summary.methods( // {{{
         event.stopPropagation();
         event.preventDefault();
         self.callRemote("updateNow").addCallback(function (_done) {
-            alert("Updated calendar and ofx");
+            Afloat.modalFromNode(self.node.select('.debugMessage')[0]);
             window.history.go(0);
         });
         var spinner = Afloat.newSpinner("Updating...");

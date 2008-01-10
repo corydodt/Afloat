@@ -3,6 +3,8 @@
 
     <div class="debugUpdate" n:render="debugUpdate"><a href="#">Update Now</a></div>
 
+    <div class='hidden debugMessage'>Updated ledger and scheduled transactions.</div>
+
     <table>
       <thead><td><h3>Balances</h3></td><td>Ledger</td><td>Available</td><td /><td /></thead>
       <tbody n:render="summary">

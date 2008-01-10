@@ -11,32 +11,23 @@ Major
 Minor
 =====
 
-1  the lightbox appears *behind* flash plugin objects (workaround/hack: make
-   the flash object visibility: hidden until after lightbox?)
-    - test: a) schedule a random txn to happen 4? days ago using the Google UI
-      b) force an update so the lightbox appears
-    - actual: the lightbox content appears partially behind the flash object,
-      or is garbled (observed in FF OSX)
-    - expected: the lightbox's content is clearly visible without artifacts.
-      The flash chart need not be visible.
-
-2  Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
+1  Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
    when they come at the beginning of a line in the scheduler widget
     - test: a) schedule an event as $-99 foo bar using the scheduler. an
       update will happen automatically.
     - actual: The event should show as a debit of $-99 in the schedule box
     - expected: The event shows as a deposit of $99
 
-3  show future debits from savings / clean up defaultAccount stuff
+2  show future debits from savings / clean up defaultAccount stuff
 
-4  Do not show the None hold in the UI when hovering
+3  Do not show the None hold in the UI when hovering
 
-5  fix caching of javascript and images from static.. max-age=0??
+4  fix caching of javascript and images from static.. max-age=0??
 
-6  Hyperlink from events to the google calendar entry, so you can edit them.
+5  Hyperlink from events to the google calendar entry, so you can edit them.
    Instances of recurring events should have an extra HL to edit the original
 
-7  speed up fixup step by doing all fixups in one request
+6  speed up fixup step by doing all fixups in one request
 
-8  scheduler table sometimes gets off by a few pixels and floats down to the
+7  scheduler table sometimes gets off by a few pixels and floats down to the
    next line
