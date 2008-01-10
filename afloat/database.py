@@ -11,7 +11,7 @@ from twisted.internet import defer
 from storm import locals
 
 from afloat.util import RESOURCE, days
-from afloat.gvent.readcal import parseKeywords
+from afloat.gvent.readcal import parseKeywords, cleanEventTitle
 from afloat.gvent import protocol
 
 
@@ -104,6 +104,14 @@ class BalanceDay(object):
     def __init__(self, date, balance):
         self.date = date
         self.balance = balance
+
+
+def kwSplit(s):
+    """
+    Clean [comments], amounts and check numbers, lowercase, normalize
+    whitespace and fold puncutation to whitespace, and return the words.
+    """
+    return parseKeywords(cleanEventTitle(s).lower())
 
 
 class AfloatReport(object):
@@ -734,10 +742,9 @@ class AfloatReport(object):
             if self.store.find(ST, ST.bankId == txn.id).count() > 0:
                 continue
 
-            # split into words and remove money amounts, then look at the
-            # memo. we should match all words.
-            txnWords = [w.lower() for w in parseKeywords(txn.memo)]
-            myWords = [w.lower() for w in parseKeywords(schedtxn.title)]
+            # try to match all words in schedtxn to a word in txn
+            txnWords = kwSplit(txn.memo)
+            myWords = kwSplit(schedtxn.title)
             matchCount = 0
             for kw in myWords:
                 if kw in txnWords:

@@ -249,11 +249,11 @@ def findCheckNumber(s):
 
 bracketRx = re.compile(r'\[.*?\]')
 
-def cleanEventTitle(event):
+def cleanEventTitle(s):
     """
     Remove comments, in brackets
     """
-    return bracketRx.sub('', event.title.text)
+    return bracketRx.sub('', s)
 
 
 def fixupEvent(client, event):
@@ -274,7 +274,7 @@ def fixupEvent(client, event):
 
 
     # remove [comments inside brackets] before processing the event
-    titleText = cleanEventTitle(event)
+    titleText = cleanEventTitle(event.title.text)
 
 
     # add amount properties by parsing the title
