@@ -23,7 +23,7 @@
       </tbody>
     </table>
     <form name="unscheduleThese" class="schedulerForm">
-      <input type="submit" name="rescheduler" value="Reschedule" />
+      <input type="submit" name="rescheduler" value="I'm done" />
     </form>
   </div>
 
