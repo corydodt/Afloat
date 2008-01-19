@@ -59,7 +59,8 @@ testPython "Divmod Nevow" 'import nevow'
 testPython "Python 2.5" 'import xml.etree'
 testPython "Storm" 'from storm.locals import *'
 testPython "SQLite 3" 'import sqlite3'
-testPython "simpleparse" 'import simpleparse'
+testPython "SimpleParse 2.1" 'import simpleparse; import afloat.gvent.parsetxn'
+testPython "GData API" 'import atom; import gdata'
 
 if [ "$errorStatus" == "error" ]; then
     echo "** Errors occurred.  Please fix the above errors, then re-run this script."
