@@ -10,14 +10,11 @@ from gdata.calendar.service import CalendarEventQuery, CalendarService
 from gdata import calendar
 
 from afloat.util import RESOURCE, days
-
-CALENDAR_NAMES = {
-        'finance': 'bd7j228bhdt527n0o4pk8dhf50@group.calendar.google.com'
-}
+from afloat.gvent import parsetxn
 
 AFLOAT_NS = 'http://thesoftworld.com/2007/afloat#'
 
-AFLOAT_USERAGENT = 'TheSoftWorld-Afloat-0.0'
+AFLOAT_USERAGENT = 'TheSoftWorld-Afloat-0.5'
 
 def uu(key):
     """
@@ -42,10 +39,6 @@ EVENT_FROMACCOUNT = uu('fromAcct')
 EVENT_TOACCOUNT = uu('toAcct')
 # afloat#checkNumber ; value: string account number
 EVENT_CHECKNUMBER = uu('checkNum')
-
-
-class NoAmountError(Exception):
-    pass
 
 
 class MissingToAccount(Exception):
@@ -238,24 +231,6 @@ def findAmount(s):
 
 checkRx = re.compile(r'#\d+\b')
 
-def findCheckNumber(s):
-    """
-    Return the check number if any
-    """
-    words = s.split()
-    for word in words:
-        if checkRx.match(word):
-            return word
-
-bracketRx = re.compile(r'\[.*?\]')
-
-def cleanEventTitle(s):
-    """
-    Remove comments, in brackets
-    """
-    return bracketRx.sub('', s)
-
-
 def fixupEvent(client, event):
     """
     Parse numerics in event's title and set extended amount attribute on
@@ -273,14 +248,9 @@ def fixupEvent(client, event):
     get = propsFound.get
 
 
-    # remove [comments inside brackets] before processing the event
-    titleText = cleanEventTitle(event.title.text)
-
-
-    # add amount properties by parsing the title
-    amount = findAmount(titleText)
-    if amount is None:
-        raise NoAmountError(titleText)
+    title = parsetxn.TxnTitle.fromString(event.title.text)
+    amount = title.amount
+    cn = title.checkNumber
 
     if get(EVENT_AMOUNT) != amount or EVENT_AMOUNT not in propsFound:
         prop = calendar.ExtendedProperty(name=EVENT_AMOUNT, value=str(amount))
@@ -290,7 +260,6 @@ def fixupEvent(client, event):
 
 
     # add check number properties by parsing the title
-    cn = findCheckNumber(titleText)
     if get(EVENT_CHECKNUMBER) != cn or EVENT_CHECKNUMBER not in propsFound:
         if cn is not None:
             prop = calendar.ExtendedProperty(name=EVENT_CHECKNUMBER, value=str(cn))
@@ -463,7 +432,7 @@ class GetEvents(usage.Options):
             if self['fixup']:
                 try:
                     e = fixupEvent(client, e)
-                except NoAmountError:
+                except parsetxn.NoAmountError:
                     # missing amount -> not a real event, don't even attempt
                     # to handle it
                     continue
@@ -655,37 +624,6 @@ def parseDateYMD(s):
     if s is None:
         return None
     return datetime.datetime.strptime(s, '%Y-%m-%d')
-
-alnumRx = re.compile('[_\W\s]+', flags=re.U)
-
-def parseKeywords(s):
-    """
-    Split into keywords, removing check numbers and money amounts
-    """
-    # remove puncutation characters
-    s = alnumRx.sub(' ', s)
-    words = s.split()
-    retWords = dict(enumerate(words))
-
-    # check first for anything with a $ as the amount.
-    # if that doesn't work, then check for any number as the amount.
-    # if we found an amount, remove it.
-    foundAmount = 0
-    for n, word in retWords.items():
-        if dollarRx.match(word) and not foundAmount:
-            foundAmount = 1
-            del retWords[n]
-        if checkRx.match(word):
-            del retWords[n]
-
-    if not foundAmount:
-        for n, word in retWords.items():
-            if noDollarRx.match(word):
-                foundAmount = 1
-                del retWords[n]
-                break
-
-    return zip(*sorted(retWords.items()))[1]
 
 
 class Options(usage.Options):

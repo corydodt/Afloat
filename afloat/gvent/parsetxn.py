@@ -3,8 +3,9 @@ A simpleparse parser for the "title" of a scheduled transaction.
 Extracts the amount, comments, etc.
 """
 from itertools import chain, repeat
+import re
 
-from simpleparse import parser, dispatchprocessor as disp, objectgenerator
+from simpleparse import parser, dispatchprocessor as disp
 from simpleparse.common import numbers
 ## appease pyflakes:
 numbers
@@ -43,6 +44,15 @@ TOKEN_CHECK_NUMBER = 'TOKEN_CHECK_NUMBER'
 EXCEPTION_RAISED = 'EXCEPTION_RAISED'
 
 
+alnumRx = re.compile('[_\W\s]+', flags=re.U)
+
+
+def splitWords(s):
+    """Return all the words after normalizing case and punctuation and spaces"""
+    s = s.lower()
+    return alnumRx.sub(' ', s).split()
+
+
 class TxnTitle(object):
     @classmethod
     def fromString(cls, st):
@@ -53,7 +63,12 @@ class TxnTitle(object):
         title = cls()
         title.amount = p.amount
         title.checkNumber = p.checkNumber
+        title.stuff = " ".join([x[1] for x in p.current if x[0] is TOKEN_STUFF])
         return title
+
+    def keywords(self):
+        """Return all the keywords (no comments, check numbers or amounts)"""
+        return splitWords(self.stuff)
 
 
 class Processor(disp.DispatchProcessor):
@@ -197,7 +212,7 @@ tests = ( #
 ('$ foo 99',          [(TOKEN_STUFF, '$ foo'), T_AMOUNT1,
     T_VERIFY_AMOUNT1]),
 # stray pound sign
-('# 11 foo $99',      [(TOKEN_STUFF, '#'), T_AMOUNT5, (TOKEN_STUFF, 'foo'), 
+('# 11 foo $99',      [(TOKEN_STUFF, '#'), T_AMOUNT5, (TOKEN_STUFF, 'foo'),
     T_DOLLAR, T_AMOUNT1, T_VERIFY_AMOUNT1]),
 # more than one special class on a line
 ('foo $99 #23 #11',   [(TOKEN_STUFF, 'foo'), T_DOLLAR, T_AMOUNT1, T_CHECK,
@@ -224,7 +239,8 @@ tests = ( #
 
 
 def padSeq(seq, padding):
-    return chain(seq, repeat(padding))                                                                                                                        
+    return chain(seq, repeat(padding))
+
 
 def padZip(l1, l2, padding=None):
     """

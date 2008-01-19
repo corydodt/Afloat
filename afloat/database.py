@@ -11,8 +11,7 @@ from twisted.internet import defer
 from storm import locals
 
 from afloat.util import RESOURCE, days
-from afloat.gvent.readcal import parseKeywords, cleanEventTitle
-from afloat.gvent import protocol
+from afloat.gvent import protocol, parsetxn
 
 
 class CannotBubble(Exception):
@@ -104,14 +103,6 @@ class BalanceDay(object):
     def __init__(self, date, balance):
         self.date = date
         self.balance = balance
-
-
-def kwSplit(s):
-    """
-    Clean [comments], amounts and check numbers, lowercase, normalize
-    whitespace and fold puncutation to whitespace, and return the words.
-    """
-    return parseKeywords(cleanEventTitle(s).lower())
 
 
 class AfloatReport(object):
@@ -743,8 +734,9 @@ class AfloatReport(object):
                 continue
 
             # try to match all words in schedtxn to a word in txn
-            txnWords = kwSplit(txn.memo)
-            myWords = kwSplit(schedtxn.title)
+            txnWords = parsetxn.splitWords(txn.memo)
+            title = parsetxn.TxnTitle.fromString(schedtxn.title)
+            myWords = title.keywords()
             matchCount = 0
             for kw in myWords:
                 if kw in txnWords:
