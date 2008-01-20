@@ -61,7 +61,7 @@ class TxnTitle(object):
         suc, _, __ = txnParser.parse(st, processor=p)
         assert suc
         title = cls()
-        title.amount = p.amount
+        title.amount = p.dollarAmount
         title.checkNumber = p.checkNumber
         title.stuff = " ".join([x[1] for x in p.current if x[0] is TOKEN_STUFF])
         return title
