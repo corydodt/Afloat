@@ -68,6 +68,7 @@ if [ "$errorStatus" == "error" ]; then
 fi
 
 if [ ! -e "afloat/afloat.db" ]; then
+    set -e
     python afloat/database.py
     echo "Wrote afloat/afloat.db"
 fi
