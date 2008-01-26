@@ -173,8 +173,13 @@ Afloat.Scheduler.methods( // {{{
         event.stopPropagation();
         event.preventDefault();
         var newItem = self.nodeById('newItem');
-        var val = newItem.value;
+        // strip whitespace
+        var val = newItem.value.replace(/^\s*(.*?)\s*$/, '$1');
         if (val == '' || val == self._defaultText) {
+            return;
+        }
+        if (! val.substring(0,1).match(/\w/)) {
+            alert('Because of bugs in Google Calendar, you must begin your scheduled item with a letter or number.');
             return;
         }
 

@@ -11,16 +11,12 @@ Major
 Minor
 =====
 
-1  Amounts of the form $-99 are parsed incorrectly: interpreted as DEPOSITS
-   when they come at the beginning of a line in the scheduler widget
-    - test: a) schedule an event as $-99 foo bar using the scheduler. an
-      update will happen automatically.
-    - actual: The event should show as a debit of $-99 in the schedule box
-    - expected: The event shows as a deposit of $99
+1  Running twistd -b afloat (debug mode) breaks process protocol and causes
+   google api calls to fail
 
-2  show future debits from savings / clean up defaultAccount stuff
+2  Do not show the None hold in the UI when hovering (the total, on checking)
 
-3  Do not show the None hold in the UI when hovering
+3  show future debits from savings / clean up defaultAccount stuff
 
 4  fix caching of javascript and images from static.. max-age=0??
 
