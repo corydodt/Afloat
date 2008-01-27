@@ -244,7 +244,7 @@ class AfloatReport(object):
                 matched.dateApplied = hold.dateApplied
 
         # skip that annoying "None" hold that always shows up
-        if hold.description is None:
+        if hold.description == 'None' and hold.dateApplied is None:
             return
 
         if not matched:

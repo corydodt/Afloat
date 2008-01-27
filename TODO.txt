@@ -14,16 +14,14 @@ Minor
 1  Running twistd -b afloat (debug mode) breaks process protocol and causes
    google api calls to fail
 
-2  Do not show the None hold in the UI when hovering (the total, on checking)
+2  show future debits from savings / clean up defaultAccount stuff
 
-3  show future debits from savings / clean up defaultAccount stuff
+3  fix caching of javascript and images from static.. max-age=0??
 
-4  fix caching of javascript and images from static.. max-age=0??
-
-5  Hyperlink from events to the google calendar entry, so you can edit them.
+4  Hyperlink from events to the google calendar entry, so you can edit them.
    Instances of recurring events should have an extra HL to edit the original
 
-6  speed up fixup step by doing all fixups in one request
+5  speed up fixup step by doing all fixups in one request
 
-7  scheduler table sometimes gets off by a few pixels and floats down to the
+6  scheduler table sometimes gets off by a few pixels and floats down to the
    next line
