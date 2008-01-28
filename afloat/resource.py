@@ -485,20 +485,29 @@ class VhostFakeRoot:
     I am a wrapper to be used at site root when you want to combine 
     vhost.VHostMonsterResource with nevow.guard. If you are using guard, you 
     will pass me a guard.SessionWrapper resource.
+
+    Pass me a prepath argument (a string) to hide the entire application
+    behind that URL.  That string will be treated like a directory in front of
+    every path.
     """
     implements(inevow.IResource)
-    def __init__(self, wrapped):
+    def __init__(self, wrapped, prepath=None):
         self.wrapped = wrapped
+        self.prepath = prepath
     
     def renderHTTP(self, ctx):
         return self.wrapped.renderHTTP(ctx)
         
     def locateChild(self, ctx, segments):
-        """Returns a VHostMonster if the first segment is "vhost". Otherwise
-        delegates to the wrapped resource."""
+        """
+        Returns a VHostMonster if the first segment is "VHOST". Otherwise
+        delegates to the wrapped resource.
+        """
         if segments[0] == "VHOST":
             return vhost.VHostMonsterResource(), segments[1:]
         else:
+            if self.prepath is not None:
+                if segments[0] == self.prepath:
+                    segments = segments[1:]
             return self.wrapped.locateChild(ctx, segments)
-
 

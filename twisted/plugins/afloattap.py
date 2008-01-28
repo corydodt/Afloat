@@ -16,6 +16,8 @@ from afloat.service import AfloatService, STFUSite
 class Options(usage.Options):
     optParameters = [['port', 'p', '7780', 'Port to run on'],
                      ['interface', None, '0.0.0.0', 'IP address of an interface to run on.'],
+                     ['prepath', None, None, 
+                      'Prepend this "secret" URL in front of the application URL',]
                      ]
     ## optFlags = [['dev', None, 'Enable development features']]
 
@@ -39,7 +41,7 @@ class AfloatServerMaker(object):
         """
         # do startup tasks, if any.
         root = Root()
-        resource = VhostFakeRoot(root)
+        resource = VhostFakeRoot(root, options['prepath'])
         factory = STFUSite(resource)
         port = int(options['port'])
         svc = AfloatService(port, factory, interface=options['interface'])

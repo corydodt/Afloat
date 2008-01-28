@@ -50,7 +50,7 @@
           </n:slot>
           <td class="rowControl" title="Delete this"><n:attr name=
             "rev"><n:slot name="href" /></n:attr><img src=
-            "/static/cancel.png" /></td>
+            "../static/cancel.png" /></td>
         </n:invisible>
 
         <tr n:pattern="deposit" class="deposit">

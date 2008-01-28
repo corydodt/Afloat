@@ -45,7 +45,7 @@
         <n:attr name="rev">holds+<n:slot name="account" /></n:attr>
         <div class=
           "ttArrow1"><div style="height:100%">&#160;</div><div class=
-            "ttArrow1-1"><img src="/static/leftarrow-10x10-cfe6dc.png" /></div></div>
+            "ttArrow1-1"><img src="../static/leftarrow-10x10-cfe6dc.png" /></div></div>
         <table class="txnTipTip-table" n:pattern="t">
           <tr n:pattern="holdItem">
             <td><n:slot name="amount" /></td>
@@ -59,7 +59,7 @@
           "rev">last3Deposits+<n:slot name="account" /></n:attr>
         <div class=
           "ttArrow1"><div style="height:100%">&#160;</div><div class=
-            "ttArrow1-1"><img src="/static/leftarrow-10x10-cfe6dc.png" /></div></div>
+            "ttArrow1-1"><img src="../static/leftarrow-10x10-cfe6dc.png" /></div></div>
         <table class="txnTipTip-table" n:pattern="t">
           <tr n:pattern="threeDepositsItem">
             <td><n:slot name="date" /></td>
@@ -74,7 +74,7 @@
           "rev">last3Debits+<n:slot name="account" /></n:attr>
         <div class=
           "ttArrow1"><div style="height:100%">&#160;</div><div class=
-            "ttArrow1-1"><img src="/static/leftarrow-10x10-cfe6dc.png" /></div></div>
+            "ttArrow1-1"><img src="../static/leftarrow-10x10-cfe6dc.png" /></div></div>
         <table class="txnTipTip-table" n:pattern="t">
           <tr n:pattern="threeDebitsItem">
             <td><n:slot name="date" /></td>
