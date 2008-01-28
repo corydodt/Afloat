@@ -15,6 +15,7 @@ from afloat.service import AfloatService, STFUSite
 
 class Options(usage.Options):
     optParameters = [['port', 'p', '7780', 'Port to run on'],
+                     ['interface', None, '0.0.0.0', 'IP address of an interface to run on.'],
                      ]
     ## optFlags = [['dev', None, 'Enable development features']]
 
@@ -41,7 +42,7 @@ class AfloatServerMaker(object):
         resource = VhostFakeRoot(root)
         factory = STFUSite(resource)
         port = int(options['port'])
-        svc = AfloatService(port, factory)
+        svc = AfloatService(port, factory, interface=options['interface'])
         root.service = svc
         
         return svc
