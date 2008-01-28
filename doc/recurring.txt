@@ -1,0 +1,83 @@
+regular event: recurrence is None	len(e.when) == 1	e.original_event = None
+recurring event: recurrence.text is set	len(e.when) may be > 1	e.original_event is None
+instance of a recurring event: recurrence is None   len(ev.when) == 1	ev.original_event = some recurring event
+exception to a recurring event: same as instance of a recurring event?
+
+
+Things that create events:
+    - AddEvent.addEvent
+    -   calls quickAddEvent
+    - ScrubEvents.scrubEvent
+    -   calls copyEvent
+
+Things that modify existing events:
+    - AddEvent.addEvent
+    -   calls fixupEvent
+    - GetEvent.postOptions
+    -   calls fixupEvent
+    - UpdateEvent.updateEvent (*does NOT call fixupEvent)
+
+Things that delete events:
+    - RemoveEvent.removeEvent
+    -   calls deleteEvent
+    - ScrubEvent.scrubEvent
+    -   calls deleteExactEvent
+
+
+What needs to happen:
+    + RemoveEvent.removeEvent checks event
+        + assert not a recurring event!
+        + then just remove it.
+
+    + AddEvent changes
+        + AddEvent.addEvent print 'OK' now instead of an event string
+        + addEvent should not attempt to load the event
+
+    + fixupEvent just fixes up a single event, no special magic
+
+    + updateEvent checks event
+        + assert not a recurring event!
+        + nothing else appears to be required.
+
+    + GetEvents.postOptions changes
+        + use singleevents feed so we can modify instances, not recurrings
+
+    + resource.Scheduler.schedule should cause (and wait for) all events to be
+      re-retrieved.
+
+    + AfloatReport.quickAddItem should not:
+        + attempt to update database from the event (it doesn't get one any
+          more)
+        + attempt to matchup to the event (AfloatReport.update will get
+          called)
+        + attempt to bubble forward on the event (AfloatReport.update will get
+          called)
+
+Tests:
+- 1. QuickAdd an event like "Shell Gas $25 every day"
++ 1a. Recurring event should be created
++ 1b. After scheduling, page reloads, should contain all the new instances of
+      the item
++ 1c. Google calendar should show the item.
+- 1d. Items scheduled for a day other than today should not appear on today
+
++ 2. Delete a single instance of the recurring
++ 2a. Only that instance should go away on the schedule
++ 2b. Google calendar instance should go away
++ 2c. ONLY that instance went away on the calendar
+
++ 3. Retitle an instance of a recurring in Google's UI
++ 3a. See new title in schedule after reloads
++ 3b. Only that instance should be retitled in scheduler
+
++ 5. "Schedule" an event which is already paid such that it immediately gets
+     retitled as [PAID]
++ 5a. Only that instance should be retitled in Google
++ 5b. Any properties on it (e.g. [PAID]) should be retained
+
++ 4. "Schedule" some recurring event for yesterday such that it immediately
+     gets bubbled forward today (use Google UI to do this)
++ 4a. New date should be reflected in Google
++ 4b. After reloads, should see item 1 day later in schedule
+
+# vim:set si:

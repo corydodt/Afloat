@@ -10,7 +10,7 @@ from twisted.python import log
 from nevow import rend, static, url, inevow, vhost, athena, loaders, page
 
 from afloat.util import RESOURCE, days
-from afloat.gvent.readcal import NoAmountError, findAmount
+from afloat.gvent import parsetxn
 
 MONDAY = 1
 FRIDAY = 5
@@ -147,6 +147,17 @@ class Summary(athena.LiveElement):
             pat.fillSlots('ledger', '%.2f' % (account.ledgerBalance/100.,))
             pat.fillSlots('available', '%.2f' % (account.availableBalance/100.,))
             pat.fillSlots('account', account.id)
+            if account.regulationDCount:
+                remaining = account.regulationDMax - account.regulationDCount
+                if remaining > 0:
+                    regDPat = pat.patternGenerator("regulationD")()
+                else:
+                    regDPat = pat.patternGenerator("regulationDWarning")()
+                regDPat.fillSlots('regDCount', remaining)
+                regDPat.fillSlots('regDMax', account.regulationDMax)
+                pat.fillSlots('regulationD', regDPat)
+            else:
+                pat.fillSlots('regulationD', [])
             content.append(pat)
         return tag[content]
 
@@ -207,10 +218,11 @@ class Summary(athena.LiveElement):
     @athena.expose
     def updateNow(self):
         """
-        Immediately get 
+        Immediately get the freshest ofx/gvents
         """
         assert self.report.config['debug']
         return self.report.update()
+
 
 class Graphs(athena.LiveElement):
     """
@@ -433,12 +445,13 @@ class Scheduler(athena.LiveElement):
     @athena.expose
     def schedule(self, value):
         """
-        Put a new item on the google calendar
+        Put a new item on the google calendar.  Then re-get all items from the
+        calendar.
         """
-        if findAmount(value) is None:
-            raise NoAmountError(value)
+        # this will raise a NoAmountError if there's no amount
+        t = parsetxn.TxnTitle.fromString(value)
         d = self.report.quickAddItem(value)
-        d.addCallback(lambda txn: u"OK")
+        d.addCallback(lambda _: self.report.update())
         return d
 
 

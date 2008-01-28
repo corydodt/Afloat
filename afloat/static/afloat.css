@@ -174,6 +174,10 @@ h1, h2, h3, h4 {
     font-weight: bold;
 }
 
+.hidden {
+    display: none
+}
+
 .hiddenSummary {
     display: none;
 }
@@ -240,21 +244,20 @@ h1, h2, h3, h4 {
 }
 
 
-/* Control.Modal styles */
-#modal_container {  
-    padding:5px;  
-    background-color:#fff;  
-    border:2px outset black;
-    overflow:auto;  
-    font-family:"Lucida Grande",Verdana;  
-    font-size:12px;  
-    color:#333;  
-    text-align:left;  
-} 
- 
-#modal_overlay {  
-    background-color:#c2d7ce;  
-}  
+/* Control.Modal styles */  #modal_container {  
+/* Control.Modal styles */      padding:5px;  
+/* Control.Modal styles */      background-color:#fff;  
+/* Control.Modal styles */      border:2px outset black;
+/* Control.Modal styles */      overflow:auto;  
+/* Control.Modal styles */      font-family:"Lucida Grande",Verdana;  
+/* Control.Modal styles */      font-size:12px;  
+/* Control.Modal styles */      color:#333;  
+/* Control.Modal styles */      text-align:left;  
+/* Control.Modal styles */  } 
+/* Control.Modal styles */   
+/* Control.Modal styles */  #modal_overlay {  
+/* Control.Modal styles */      background-color:#c2d7ce;  
+/* Control.Modal styles */  }  
 
 .lateTransactions {
     display: none
@@ -269,4 +272,14 @@ form.schedulerForm {
 
 .gray {
     color: #AAA;
+}
+
+.regulationDRow td {
+    font-size: x-small;
+    padding: 1pt;
+    padding-left: 12px;
+}
+
+.regulationDWarning {
+    color: red;
 }

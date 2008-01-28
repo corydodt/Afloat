@@ -11,8 +11,15 @@ from twisted.internet import defer
 from storm import locals
 
 from afloat.util import RESOURCE, days
-from afloat.gvent.readcal import parseKeywords
-from afloat.gvent import protocol
+from afloat.gvent import protocol, parsetxn
+
+
+class CannotBubble(Exception):
+    """
+    A bubble-forward event failed because no successful OFX load has taken
+    place.
+    """
+
 
 class BankTransaction(object):
     __storm_table__ = 'banktxn'
@@ -64,6 +71,9 @@ class ScheduledTransaction(object):
 
 
 class NetworkLog(object):
+    """
+    A log of network events to OFX and Google Calendar
+    """
     __storm_table__ = 'networklog'
     id = locals.Int(primary=True)
     eventDateTime = locals.DateTime()
@@ -74,7 +84,7 @@ class NetworkLog(object):
     @classmethod
     def log(cls, store, service, severity, description):
         now = datetime.datetime.today()
-        nl = NetworkLog()
+        nl = cls()
         nl.eventDateTime = now
         assert service in ('gvent', 'ofx')
         nl.service = service
@@ -143,11 +153,17 @@ class AfloatReport(object):
         _gventDeferred = self._ofxDeferred.addCallback(
                 lambda _: self.getGvents(account=c['defaultAccount'],))
 
+        # look for events we can reconcile. we now do this both before and
+        # after bubbleForward so we can catch anything we missed yesterday
+        _gventDeferred.addCallback(lambda _: self.matchup())
+
+        # look for scheduledtxn items that still have not occurred / are
+        # late.  These should be bubbled forward according to rules.
+        # we now do this both before and after 
+        _gventDeferred.addCallback(lambda _: self.bubbleForward())
+
         _gventDeferred.addCallback(logSuccess, u'gvent')
         _gventDeferred.addErrback(logFailure, u'gvent')
-        _gventDeferred.addErrback(log.err)
-
-        _gventDeferred.addCallback(lambda _: self.matchup())
         _gventDeferred.addErrback(log.err)
 
         return _gventDeferred
@@ -177,7 +193,7 @@ class AfloatReport(object):
 
             # create regular transactions
             for account in p.banking.accounts.values():
-                self.updateAccount(account)
+                self.importAccount(account)
                 for txn in account.transactions.values():
                     self.importTransaction(account.id, txn)
 
@@ -228,7 +244,7 @@ class AfloatReport(object):
                 matched.dateApplied = hold.dateApplied
 
         # skip that annoying "None" hold that always shows up
-        if hold.description is None:
+        if hold.description == 'None' and hold.dateApplied is None:
             return
 
         if not matched:
@@ -321,8 +337,10 @@ class AfloatReport(object):
         """
         account = kw['account']
 
-        date1 = datetime.datetime.today() - days(7)
-        date2 = date1 + days(self.config['lookAheadDays'] + 1)
+        today = datetime.datetime.today() 
+        date1 = today - days(7)
+        # +1 for today and +1 because the upper end is exclusive
+        date2 = today + days(self.config['lookAheadDays'])
 
         d = protocol.getGvents(date1, date2)
 
@@ -334,12 +352,6 @@ class AfloatReport(object):
             # google feed; these should be removed from scheduledtxn
             self.purgeRemovals(gvents, date1, date2)
 
-            # look for scheduledtxn items that still have not occurred / are
-            # late.  These should be bubbled forward according to rules.
-            d = self.bubbleForward()
-
-            return d
-
         d.addCallback(gotGvents)
         return d
 
@@ -349,6 +361,20 @@ class AfloatReport(object):
 
         First move gvents, then move database transactions.
         """
+        # first check that there has recently been a successful OFX transfer.
+        # If the most recent OFX transfer failed (or is missing), we don't
+        # want to pretend that we know what happened to scheduled txns on the
+        # days we haven't seen yet.
+        rs = self.store.find(NetworkLog, NetworkLog.service == u'ofx'
+                ).order_by(locals.Desc(NetworkLog.eventDateTime))
+        if not rs:
+            raise CannotBubble()
+        else:
+            last = rs.first()
+            if not last.severity == u'OK':
+                raise CannotBubble()
+
+ 
         log.msg("BUBBLING FORWARD TRANSACTIONS")
 
         bubblers = []
@@ -474,9 +500,9 @@ class AfloatReport(object):
                 self.store.remove(sched)
         self.store.commit()
 
-    def updateAccount(self, account):
+    def importAccount(self, account):
         """
-        Make changes to an account in account table when it already exists
+        Do CRUD operations on accounts.
         """
         bankAcct = self.store.get(Account, account.id)
         if bankAcct is None:
@@ -488,8 +514,8 @@ class AfloatReport(object):
         bankAcct.ledgerAsOfDate = account.ledgerDate
         bankAcct.availableBalance = account.availBal
         bankAcct.availableAsOfDate = account.availDate
-        # bankAcct.regulationDCount =
-        # bankAcct.regulationDMax =
+        bankAcct.regulationDCount = account.regDCount
+        bankAcct.regulationDMax = account.regDMax
         self.store.commit()
 
     def balanceDays(self, account):
@@ -596,23 +622,15 @@ class AfloatReport(object):
 
     def quickAddItem(self, content):
         """
-        Add a new scheduled item to the google calendar.  Add the returned
-        transaction to our database.
+        Add a new scheduled item to the google calendar.
         """
         d = protocol.quickAdd(content)
 
-        def gotEvent(event):
-            txn = self.importScheduledTransaction(
-                    self.config['defaultAccount'], event)
-            log.msg("New event and calendar responded: OK, %s" % (event,))
-            log.msg("check for matchup %s" % (event,))
-            d = self.matchup()
-            log.msg("check for bubbling forward %s" % (event,))
-            d.addCallback(lambda _done: self.bubbleForward())
-            d.addCallback(lambda _done2: txn)
-            return d
+        def gotResponse(event):
+            log.msg("New event and calendar responded: OK")
+            return 'OK'
 
-        d.addCallback(gotEvent)
+        d.addCallback(gotResponse)
 
         return d
 
@@ -656,10 +674,11 @@ class AfloatReport(object):
                 newAmount = matched.amount
                 newDate = matched.ledgerDate
                 d_ = protocol.putMatchedTransaction(pending.href,
-                        newDate, newAmount, newTitle)
+                        newDate, newDate, newAmount, newTitle)
 
                 def gotMatchedTransaction(txn, pending):
                     pending.paidDate = txn.paidDate 
+                    pending.expectedDate = txn.expectedDate
                     # overwrite the scheduled amount with the actual amount, when
                     # they differ (within the $0.05 tolerance)
                     pending.amount = txn.amount
@@ -682,17 +701,31 @@ class AfloatReport(object):
         mydate = schedtxn.expectedDate
         myamount = schedtxn.amount
 
-        todayTxns = self.store.find(BankTransaction, 
-                BankTransaction.ledgerDate == mydate)
+        BT = BankTransaction
 
-        # look at check numbers first to shortcut
+        # look at check numbers first to shortcut.
+        # Assumption: check numbers can occur only once in the ledger
         if schedtxn.checkNumber:
-            for txn in todayTxns:
-                if txn.checkNumber == schedtxn.checkNumber:
-                    return txn
+            t = self.store.find(BT, BT.checkNumber == schedtxn.checkNumber).one()
+            # To prevent user-entry error, either the day or the amount must
+            # match exactly.
+            if t:
+                if mydate == t.ledgerDate or myamount == t.amount:
+                    return t
+
             return None
 
-        for txn in todayTxns:
+        today = datetime.datetime.now()
+
+        dateRange = [BT.ledgerDate >= schedtxn.originalDate, 
+                BT.ledgerDate <= today]
+        amountRange = [BT.amount >= schedtxn.amount - 5,
+                BT.amount <= schedtxn.amount + 5]
+
+        candidates = self.store.find(BT, 
+                locals.And(*([] + dateRange + amountRange)))
+
+        for txn in candidates:
             ST = ScheduledTransaction
 
             # skip any transaction that already has a corresponding paid
@@ -700,15 +733,11 @@ class AfloatReport(object):
             if self.store.find(ST, ST.bankId == txn.id).count() > 0:
                 continue
 
-            # skip any that don't match within $0.05
-            if abs(txn.amount - schedtxn.amount) > 5:
-                continue
-
-            # split into words and remove money amounts, then look at the memo. we
-            # should match all words.
-            txnWords = txn.memo.split()
+            # try to match all words in schedtxn to a word in txn
+            txnWords = parsetxn.splitWords(txn.memo)
+            title = parsetxn.TxnTitle.fromString(schedtxn.title)
+            myWords = title.keywords()
             matchCount = 0
-            myWords = parseKeywords(txn.memo)
             for kw in myWords:
                 if kw in txnWords:
                     matchCount += 1

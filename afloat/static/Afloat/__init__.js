@@ -21,6 +21,21 @@ Afloat.modalFromNode = function (node) { // {{{
     // copy the content of node into a modal dialog (lightbox)
     var config = new LightboxConfig();
     config.contents = node.innerHTML;
+
+    // kludge .. hide all embedded stuff when showing the modal
+    var embeds = document.documentElement.select('embed');
+    $A(embeds).each(function (e) { 
+        e.setAttribute('_oldVisibility', e.style['visibility']);
+        e.style['visibility'] = 'hidden'; 
+    });
+    
+    // restore embedded stuff when closing the modal
+    config.afterClose = function () { $A(embeds).each(function(e) {
+        e.style['visibility'] = e.readAttribute('_oldVisibility');
+        e.removeAttribute('_oldVisibility');
+        }
+    )};
+
     var modal = new Control.Modal(null, config);
     modal.open();
     return modal;
@@ -83,7 +98,7 @@ Afloat.Summary.methods( // {{{
         event.stopPropagation();
         event.preventDefault();
         self.callRemote("updateNow").addCallback(function (_done) {
-            alert("Updated calendar and ofx");
+            Afloat.modalFromNode(self.node.select('.debugMessage')[0]);
             window.history.go(0);
         });
         var spinner = Afloat.newSpinner("Updating...");
@@ -158,12 +173,19 @@ Afloat.Scheduler.methods( // {{{
         event.stopPropagation();
         event.preventDefault();
         var newItem = self.nodeById('newItem');
-        var val = newItem.value;
+        // strip whitespace
+        var val = newItem.value.replace(/^\s*(.*?)\s*$/, '$1');
         if (val == '' || val == self._defaultText) {
             return;
         }
+        if (! val.substring(0,1).match(/\w/)) {
+            alert('Because of bugs in Google Calendar, you must begin your scheduled item with a letter or number.');
+            return;
+        }
 
-        var d = self.callRemote("schedule", val);
+        var d = self.callRemote("schedule", val).addCallback(function (_done) {
+            window.history.go(0);
+        });
 
         // install a spinner over the form
         var spinner = Afloat.newSpinner("Creating new item \"" + val + "\"");
