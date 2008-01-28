@@ -470,9 +470,6 @@ class Root(rend.Page):
     """
     addSlash = True  # yeah, we really do need this, otherwise 404 on /
 
-    #def _child_sandbox(self, ctx):
-    #    from goonmill._sparqlsandbox import *
-    #    return SandboxPage()
     def child_static(self, ctx):
         return static.File(RESOURCE('static'))
 
