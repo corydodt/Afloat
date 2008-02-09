@@ -5,3 +5,4 @@
 ^.*/dropin.cache$
 .*\.pyc$
 ^config.py$
+^twistd.log.*$
