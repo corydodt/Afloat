@@ -12,7 +12,7 @@ from gdata import calendar
 from afloat.util import RESOURCE, days
 from afloat.gvent import parsetxn
 
-AFLOAT_NS = 'http://thesoftworld.com/2007/afloat#'
+AFLOAT_NS = 'http://goonmill.org/2008/afloat#'
 
 AFLOAT_USERAGENT = 'TheSoftWorld-Afloat-0.5'
 
